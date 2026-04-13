@@ -3,6 +3,56 @@ use gpui::{prelude::FluentBuilder as _, *};
 
 const UST_BAR_YÜKSEKLİĞİ: Pixels = px(40.);
 
+// --- Cam efekti algilama ---
+
+/// Mevcut platformda compositor blur destegi olup olmadigini tespit eder.
+/// Destekleniyorsa `Blurred`, desteklenmiyorsa `Transparent` doner.
+fn cam_efekti_destegi() -> WindowBackgroundAppearance {
+    // macOS: NSVisualEffectView ile tam destek
+    #[cfg(target_os = "macos")]
+    {
+        return WindowBackgroundAppearance::Blurred;
+    }
+
+    // Windows: DWM Acrylic ile tam destek
+    #[cfg(target_os = "windows")]
+    {
+        return WindowBackgroundAppearance::Blurred;
+    }
+
+    // Linux: Compositor ve oturum tipine bagli
+    #[cfg(target_os = "linux")]
+    {
+        let oturum_tipi = std::env::var("XDG_SESSION_TYPE").unwrap_or_default();
+        let masaustu = std::env::var("XDG_CURRENT_DESKTOP")
+            .unwrap_or_default()
+            .to_uppercase();
+
+        match oturum_tipi.as_str() {
+            "wayland" if masaustu.contains("KDE") => {
+                // KDE Plasma: org_kde_kwin_blur protokolu ile destek var
+                WindowBackgroundAppearance::Blurred
+            }
+            _ => {
+                // X11, GNOME Wayland, Sway vs: GPUI blur destegi yok
+                // Transparent ile yari saydam cam gorunumu sagliyoruz
+                WindowBackgroundAppearance::Transparent
+            }
+        }
+    }
+}
+
+/// Cam efekti durumuna gore arka plan rengini dondurur.
+/// Blur varsa daha seffaf, yoksa daha opak renk kullanir.
+fn cam_arka_plan(gorunum: WindowBackgroundAppearance) -> Hsla {
+    match gorunum {
+        // Blur aktif: compositor arkaplani bulaniklastirir, daha seffaf olabiliriz
+        WindowBackgroundAppearance::Blurred => hsla(0.4, 0.6, 0.2, 0.4),
+        // Blur yok: daha opak yaparak okunurlugu koruyoruz
+        _ => hsla(0.4, 0.6, 0.2, 0.8),
+    }
+}
+
 #[cfg(target_os = "macos")]
 const UST_BAR_SOL_BOŞLUK: Pixels = px(80.);
 #[cfg(not(target_os = "macos"))]
@@ -165,6 +215,7 @@ fn kapatma_istegi(_window: &mut Window, _cx: &mut gpui::App) -> bool {
 
 struct App {
     top_bar: UstBar,
+    cam_gorunum: WindowBackgroundAppearance,
 }
 
 impl Render for App {
@@ -172,7 +223,7 @@ impl Render for App {
         div()
             .size_full()
             .flex_col()
-            .bg(hsla(0.4, 0.6, 0.2, 0.7))
+            .bg(cam_arka_plan(self.cam_gorunum))
             .child(self.top_bar.render(window, cx))
     }
 }
@@ -193,19 +244,26 @@ fn main() {
         }]);
 
         cx.spawn(async move |cx| {
+            let cam_gorunum = cam_efekti_destegi();
+
             let options = WindowOptions {
                 titlebar: Some(TitlebarOptions {
                     appears_transparent: true,
                     traffic_light_position: Some(point(px(8.), px(12.))),
                     ..Default::default()
                 }),
-                window_background: WindowBackgroundAppearance::Blurred,
+                window_background: cam_gorunum,
                 is_resizable: true,
                 ..Default::default()
             };
 
             let window_handle = cx
-                .open_window(options, |_window, cx| cx.new(|_cx| App { top_bar: UstBar }))
+                .open_window(options, |_window, cx| {
+                    cx.new(|_cx| App {
+                        top_bar: UstBar,
+                        cam_gorunum,
+                    })
+                })
                 .expect("Pencere açılamadı");
 
             // Pencere kapatilmak istendiginde kapatma_istegi fonksiyonunu cagir
