@@ -1,0 +1,127 @@
+name: Build
+
+on:
+  schedule:
+    # Her gun saat 20:00 Turkiye saati (UTC+3 = 17:00 UTC)
+    - cron: "0 17 * * *"
+  workflow_dispatch:
+    description: Elle derleme baslatma
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # ── Linux ──────────────────────────────────────
+          - name: Linux x86
+            os: ubuntu-latest
+            target: i686-unknown-linux-gnu
+            artifact: gpui_app-linux-x86
+            use-cross: true
+          - name: Linux x64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact: gpui_app-linux-x64
+            use-cross: false
+          - name: Linux ARM64
+            os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            artifact: gpui_app-linux-arm64
+            use-cross: true
+
+          # ── macOS (32-bit desteklenmez) ────────────────
+          - name: macOS x64
+            os: macos-13
+            target: x86_64-apple-darwin
+            artifact: gpui_app-macos-x64
+            use-cross: false
+          - name: macOS ARM64
+            os: macos-latest
+            target: aarch64-apple-darwin
+            artifact: gpui_app-macos-arm64
+            use-cross: false
+
+          # ── Windows ────────────────────────────────────
+          - name: Windows x86
+            os: windows-latest
+            target: i686-pc-windows-msvc
+            artifact: gpui_app-windows-x86
+            use-cross: false
+          - name: Windows x64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: gpui_app-windows-x64
+            use-cross: false
+          - name: Windows ARM64
+            os: windows-latest
+            target: aarch64-pc-windows-msvc
+            artifact: gpui_app-windows-arm64
+            use-cross: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Rust toolchain kur
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      # ── Linux bagimliliklari ──
+      - name: Linux bagimliliklar (native)
+        if: runner.os == 'Linux' && !matrix.use-cross
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libasound2-dev \
+            libfontconfig-dev \
+            libglib2.0-dev \
+            libgtk-3-dev \
+            libvulkan-dev \
+            libwayland-dev \
+            libxcb-shape0-dev \
+            libxcb-xfixes0-dev \
+            libxkbcommon-dev \
+            libxkbcommon-x11-dev
+
+      # ── Cross kurulumu (Linux cross-compile icin) ──
+      - name: Cross kur
+        if: matrix.use-cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
+
+      # ── Derleme ──
+      - name: Derle (cross)
+        if: matrix.use-cross
+        run: cross build --release --target ${{ matrix.target }}
+
+      - name: Derle (native)
+        if: ${{ !matrix.use-cross }}
+        run: cargo build --release --target ${{ matrix.target }}
+
+      # ── Artifact yukle ──
+      - name: Artifact yukle (Linux/macOS)
+        if: runner.os != 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: target/${{ matrix.target }}/release/gpui_app
+          if-no-files-found: error
+
+      - name: Artifact yukle (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: target/${{ matrix.target }}/release/gpui_app.exe
+          if-no-files-found: error
