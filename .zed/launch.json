@@ -1,0 +1,8 @@
+[
+  {
+    "label": "Debug gpui_app",
+    "adapter": "CodeLLDB",
+    "program": "target/debug/gpui_app",
+    "build_task": "cargo build (debug)"
+  }
+]
