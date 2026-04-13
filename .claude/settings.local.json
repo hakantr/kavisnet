@@ -5,7 +5,10 @@
       "Bash(grep -r \"pub struct Path\" /Users/hakanbiris/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gpui-0.2.2/src/*.rs)",
       "Bash(cargo build:*)",
       "Bash(cargo check:*)",
-      "Bash(find ~/.cargo/registry/src/index.crates.io-* -maxdepth 0 -type d)"
+      "Bash(find ~/.cargo/registry/src/index.crates.io-* -maxdepth 0 -type d)",
+      "Bash(cargo run:*)",
+      "Read(//home/hakanbiris/.config/gpui_app/**)",
+      "Bash(kill %1)"
     ]
   }
 }
