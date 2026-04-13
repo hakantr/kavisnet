@@ -19,45 +19,34 @@ jobs:
       matrix:
         include:
           # ── Linux ──────────────────────────────────────
-          - name: Linux x86
-            os: ubuntu-latest
-            target: i686-unknown-linux-gnu
-            artifact: gpui_app-linux-x86
-            use-cross: true
           - name: Linux x64
             os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             artifact: gpui_app-linux-x64
-            use-cross: false
           - name: Linux ARM64
-            os: ubuntu-latest
+            os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
             artifact: gpui_app-linux-arm64
-            use-cross: true
 
           # ── macOS ────────────────────────────────────────
           - name: macOS ARM64
             os: macos-latest
             target: aarch64-apple-darwin
             artifact: gpui_app-macos-arm64
-            use-cross: false
 
           # ── Windows ────────────────────────────────────
           - name: Windows x86
             os: windows-latest
             target: i686-pc-windows-msvc
             artifact: gpui_app-windows-x86
-            use-cross: false
           - name: Windows x64
             os: windows-latest
             target: x86_64-pc-windows-msvc
             artifact: gpui_app-windows-x64
-            use-cross: false
           - name: Windows ARM64
             os: windows-latest
             target: aarch64-pc-windows-msvc
             artifact: gpui_app-windows-arm64
-            use-cross: false
 
     steps:
       - name: Checkout
@@ -74,8 +63,8 @@ jobs:
           key: ${{ matrix.target }}
 
       # ── Linux bagimliliklari ──
-      - name: Linux bagimliliklar (native)
-        if: runner.os == 'Linux' && !matrix.use-cross
+      - name: Linux bagimliliklar
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -90,42 +79,89 @@ jobs:
             libxkbcommon-dev \
             libxkbcommon-x11-dev
 
-      # ── Cross kurulumu (Linux cross-compile icin) ──
-      - name: Cross kur
-        if: matrix.use-cross
-        run: cargo install cross --git https://github.com/cross-rs/cross
-
       # ── Derleme ──
-      - name: Derle (cross)
-        if: matrix.use-cross
-        run: cross build --release --target ${{ matrix.target }}
-
-      - name: Derle (native)
-        if: ${{ !matrix.use-cross }}
+      - name: Derle
         run: cargo build --release --target ${{ matrix.target }}
 
-      # ── Artifact yukle ──
-      - name: Artifact yukle (Linux/macOS)
+      # ── Dosyayi paketle ──
+      - name: Paketle (Linux/macOS)
         if: runner.os != 'Windows'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.artifact }}
-          path: target/${{ matrix.target }}/release/gpui_app
-          if-no-files-found: error
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar czf ${{ github.workspace }}/${{ matrix.artifact }}.tar.gz gpui_app
 
-      - name: Artifact yukle (Windows)
+      - name: Paketle (Windows)
         if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path target/${{ matrix.target }}/release/gpui_app.exe -DestinationPath ${{ matrix.artifact }}.zip
+
+      # ── Artifact yukle (release adimi icin) ──
+      - name: Artifact yukle
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: target/${{ matrix.target }}/release/gpui_app.exe
-          if-no-files-found: error
+          path: |
+            ${{ matrix.artifact }}.tar.gz
+            ${{ matrix.artifact }}.zip
+          if-no-files-found: warn
 
-  # ── Eski derlemeleri temizle (son 3 basarili kalsin) ──
+  # ── Release olustur ──
+  release:
+    name: Release olustur
+    runs-on: ubuntu-latest
+    needs: build
+    if: success()
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - name: Artifact'lari indir
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Dosyalari listele
+        run: find artifacts -type f | sort
+
+      - name: Tarih etiketi olustur
+        id: tag
+        run: echo "tag=build-$(date -u +'%Y%m%d-%H%M%S')" >> "$GITHUB_OUTPUT"
+
+      - name: GitHub Release olustur
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          DATE=$(date -u +'%d.%m.%Y %H:%M UTC')
+
+          gh release create "$TAG" \
+            --title "Build $DATE" \
+            --notes "Otomatik derleme - $DATE" \
+            --latest \
+            artifacts/*
+
+      # ── Eski release'leri temizle (son 3 kalsin) ──
+      - name: Eski release'leri sil
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release list --json tagName -q '.[].tagName' \
+          | grep '^build-' \
+          | tail -n +4 \
+          | while read -r tag; do
+              echo "Siliniyor: $tag"
+              gh release delete "$tag" --yes --cleanup-tag || true
+            done
+
+  # ── Eski workflow run'lari temizle (son 3 basarili kalsin) ──
   cleanup:
     name: Eski derlemeleri temizle
     runs-on: ubuntu-latest
-    needs: build
+    needs: release
     if: success()
     permissions:
       actions: write
@@ -135,8 +171,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
         run: |
-          # Bu workflow'un basarili run'larini listele (en yeniden eskiye)
-          # Ilk 3'u atla, kalanlarini sil
           gh run list \
             --workflow build.yml \
             --status success \

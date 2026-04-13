@@ -172,7 +172,7 @@ impl Render for App {
         div()
             .size_full()
             .flex_col()
-            .bg(rgb(0x1B5E20))
+            .bg(hsla(0.4, 0.6, 0.2, 0.7))
             .child(self.top_bar.render(window, cx))
     }
 }
@@ -199,6 +199,7 @@ fn main() {
                     traffic_light_position: Some(point(px(8.), px(12.))),
                     ..Default::default()
                 }),
+                window_background: WindowBackgroundAppearance::Blurred,
                 is_resizable: true,
                 ..Default::default()
             };
