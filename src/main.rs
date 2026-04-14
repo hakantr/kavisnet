@@ -5,6 +5,7 @@ mod tema;
 use tema::Tema;
 
 const UST_BAR_YÜKSEKLİĞİ: Pixels = px(40.);
+const SOL_PANEL_GENİŞLİĞİ: Pixels = px(120.);
 
 #[cfg(target_os = "macos")]
 const UST_BAR_SOL_BOŞLUK: Pixels = px(80.);
@@ -162,20 +163,62 @@ fn kapatma_istegi(_window: &mut Window, _cx: &mut gpui::App) -> bool {
     true
 }
 
+// --- Calisma yuzeyi ---
+
+struct CalismaYuzeyi {
+    ust_bar: UstBar,
+}
+
+impl CalismaYuzeyi {
+    fn render(&self, tema: &Tema, window: &Window, cx: &Context<App>) -> impl IntoElement {
+        let kavis = tema.pencere_kavis;
+
+        div()
+            .id("calisma-yuzeyi")
+            .flex_1()
+            .flex()
+            .flex_col()
+            .bg(tema.yuzey_1)
+            .rounded_tr(kavis)
+            .rounded_br(kavis)
+            .overflow_hidden()
+            .border_l_1()
+            .border_color(tema.kenarlik)
+            // Ust bar
+            .child(self.ust_bar.render(tema, window, cx))
+            // Icerik alani (ileride dolacak)
+            .child(div().id("icerik").flex_1())
+    }
+}
+
 // --- App ---
 
 struct App {
-    top_bar: UstBar,
+    calisma_yuzeyi: CalismaYuzeyi,
     tema: Tema,
 }
 
 impl Render for App {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let kavis = self.tema.pencere_kavis;
+
         div()
             .size_full()
-            .flex_col()
+            .flex()
+            .flex_row()
             .bg(self.tema.pencere_arka_plan)
-            .child(self.top_bar.render(&self.tema, window, cx))
+            .rounded(kavis)
+            .overflow_hidden()
+            // Sol panel alani (120px sabit)
+            .child(
+                div()
+                    .id("sol-panel")
+                    .w(SOL_PANEL_GENİŞLİĞİ)
+                    .h_full()
+                    .flex_shrink_0(),
+            )
+            // Calisma yuzeyi (kalan alani doldurur)
+            .child(self.calisma_yuzeyi.render(&self.tema, window, cx))
     }
 }
 
@@ -209,7 +252,7 @@ fn main() {
             let window_handle = cx
                 .open_window(options, |_window, cx| {
                     cx.new(|_cx| App {
-                        top_bar: UstBar,
+                        calisma_yuzeyi: CalismaYuzeyi { ust_bar: UstBar },
                         tema,
                     })
                 })

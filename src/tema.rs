@@ -95,6 +95,9 @@ pub struct PencereBolumu {
     pub blur_seffaflik: f64,
     /// Seffaf modda seffaflik (0.0 - 1.0)
     pub seffaf_seffaflik: f64,
+    /// Pencere kose kavisi (piksel). 0 = kavis yok.
+    /// Sadece seffaf/blur modda gorunur, opak modda etkisiz.
+    pub kavis: f64,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -168,6 +171,7 @@ impl TemaDosyasi {
                 arka_plan: "#1A1A2E".into(),
                 blur_seffaflik: 0.45,
                 seffaf_seffaflik: 0.80,
+                kavis: 10.0,
             },
             ust_bar: UstBarBolumu {
                 arka_plan: "#141420".into(),
@@ -239,6 +243,7 @@ pub struct Tema {
     // ── Pencere (sadece burasi blur/seffaf) ──
     pub pencere_gorunum: WindowBackgroundAppearance,
     pub pencere_arka_plan: Hsla,
+    pub pencere_kavis: Pixels,
 
     // ── Ust bar ──
     pub ust_bar_arka_plan: Hsla,
@@ -362,6 +367,12 @@ impl Tema {
             }
         }
 
+        // Pencere kavisi: opak modda kavis uygulanmaz
+        let pencere_kavis = match pencere_gorunum {
+            WindowBackgroundAppearance::Opaque => px(0.),
+            _ => px(d.pencere.kavis as f32),
+        };
+
         // Golge rengi + seffaflik
         let mut golge = hex_renk(&d.golge.renk);
         golge.a = d.golge.seffaflik as f32;
@@ -369,6 +380,7 @@ impl Tema {
         Self {
             pencere_gorunum,
             pencere_arka_plan: pencere_bg,
+            pencere_kavis,
 
             ust_bar_arka_plan: hex_renk(&d.ust_bar.arka_plan),
             ust_bar_metin: hex_renk(&d.ust_bar.metin),
