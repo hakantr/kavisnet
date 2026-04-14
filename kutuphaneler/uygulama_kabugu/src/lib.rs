@@ -39,6 +39,8 @@ impl Render for AnaPanel {
             .flex_col()
             .bg(tema.pencere_arka_plan)
             .rounded(tema.pencere_kavis)
+            .border_1()
+            .border_color(tema.kenarlik)
             .overflow_hidden();
 
         if tema.ust_sinir {
@@ -275,7 +277,7 @@ impl CalismaYuzeyi {
             base = base.rounded_tr(tema.pencere_kavis);
         }
 
-        if tema.calisma_yuzeyi_kavisli_mi {
+        if tema.calisma_yuzeyi_kavisli_mi && tema.ust_sinir {
             base = base.rounded_tl(tema.calisma_yuzeyi_kavis);
         }
 

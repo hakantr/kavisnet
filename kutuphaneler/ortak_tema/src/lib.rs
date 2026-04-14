@@ -522,34 +522,45 @@ pub fn temayi_izle(cx: &mut App) {
 
     let yol = tema_dosya_yolu();
 
-    cx.spawn(async move |mut cx| {
+    cx.spawn(async move |cx| {
         let (tx, rx) = channel();
-        let mut _watcher = notify::recommended_watcher(move |res| {
+        let _watcher = notify::recommended_watcher(move |res| {
             if let Ok(_) = res {
                 let _ = tx.send(());
             }
         })
         .expect("Tema izleyici başlatılamadı");
 
+        let mut _watcher = _watcher;
         if let Some(parent) = yol.parent() {
             let _ = _watcher.watch(parent, RecursiveMode::NonRecursive);
         }
 
+        // Icerik onbellegi: inotify birden fazla olay gonderse de ya da baska
+        // dosya/attribute olaylari tetiklense de, gercek icerik degismediyse
+        // tema yeniden yuklenmez.
+        let mut son_icerik = std::fs::read_to_string(&yol).unwrap_or_default();
+
         loop {
-            let mut degisiklik_var = false;
+            let mut olay_var = false;
             while let Ok(_) = rx.try_recv() {
-                degisiklik_var = true;
+                olay_var = true;
             }
 
-            if degisiklik_var {
+            if olay_var {
                 Timer::after(Duration::from_millis(100)).await;
-                let yeni_yol = yol.clone();
-                let _ = cx.update(|cx| {
-                    if let Some(yeni_tema) = Tema::kontrol_et_ve_yukle(&yeni_yol) {
-                        cx.set_global(yeni_tema);
-                        println!("Tema canli olarak guncellendi.");
+                if let Ok(yeni_icerik) = std::fs::read_to_string(&yol) {
+                    if yeni_icerik != son_icerik {
+                        son_icerik = yeni_icerik;
+                        let yeni_yol = yol.clone();
+                        let _ = cx.update(|cx| {
+                            if let Some(yeni_tema) = Tema::kontrol_et_ve_yukle(&yeni_yol) {
+                                cx.set_global(yeni_tema);
+                                println!("Tema canli olarak guncellendi.");
+                            }
+                        });
                     }
-                });
+                }
             }
             Timer::after(Duration::from_millis(250)).await;
         }
