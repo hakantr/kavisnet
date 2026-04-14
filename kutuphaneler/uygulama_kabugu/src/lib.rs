@@ -5,6 +5,7 @@ use sol_menu::SolMenu;
 // ── Ana Panel (Uygulamanın Kök Bileşeni) ──────────────────
 
 pub struct AnaPanel {
+    pub ust_bar: UstBar,
     pub sol_menu: SolMenu,
     pub calisma_yuzeyi: CalismaYuzeyi,
 }
@@ -12,6 +13,7 @@ pub struct AnaPanel {
 impl AnaPanel {
     pub fn new() -> Self {
         Self {
+            ust_bar: UstBar,
             sol_menu: SolMenu::new(),
             calisma_yuzeyi: CalismaYuzeyi::new(),
         }
@@ -26,12 +28,20 @@ impl Render for AnaPanel {
         div()
             .size_full()
             .flex()
-            .flex_row()
+            .flex_col()
             .bg(tema.pencere_arka_plan)
             .rounded_tl(kavis)
             .overflow_hidden()
-            .child(self.sol_menu.render(tema))
-            .child(self.calisma_yuzeyi.render(tema))
+            .child(self.ust_bar.render(tema))
+            .child(
+                div()
+                    .flex_1()
+                    .flex()
+                    .flex_row()
+                    .overflow_hidden()
+                    .child(self.sol_menu.render(tema))
+                    .child(self.calisma_yuzeyi.render(tema)),
+            )
     }
 }
 
@@ -180,9 +190,6 @@ impl UstBar {
             .w_full()
             .h(tema.ust_bar_yukseklik)
             .flex_shrink_0()
-            .bg(tema.ust_bar_arka_plan)
-            .border_b_1()
-            .border_color(tema.ust_bar_ayirici)
             .flex()
             .flex_row()
             .items_center()
@@ -219,13 +226,11 @@ impl UstBar {
 
 // ── Calisma yuzeyi ────────────────────────────────────────
 
-pub struct CalismaYuzeyi {
-    ust_bar: UstBar,
-}
+pub struct CalismaYuzeyi;
 
 impl CalismaYuzeyi {
     pub fn new() -> Self {
-        Self { ust_bar: UstBar }
+        Self
     }
 
     pub fn render(&self, tema: &Tema) -> impl IntoElement {
@@ -237,8 +242,7 @@ impl CalismaYuzeyi {
             .bg(tema.yuzey_1)
             .overflow_hidden()
             .border_l_1()
-            .border_color(tema.kenarlik)
-            .child(self.ust_bar.render(tema));
+            .border_color(tema.kenarlik);
 
         if tema.calisma_yuzeyi_kavisli_mi {
             base = base.rounded_tl(tema.calisma_yuzeyi_kavis);
