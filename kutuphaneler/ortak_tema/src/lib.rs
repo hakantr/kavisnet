@@ -430,10 +430,16 @@ impl Tema {
 
     /// TemaDosyasi'ndan calisma zamani Tema'yi olusturur.
     fn dosyadan_olustur(d: &TemaDosyasi) -> Self {
-        let pencere_gorunum = match d.pencere.pencere_modu {
-            PencereModu::Otomatik => sistem_blur_destegi(),
-            PencereModu::Seffaf => WindowBackgroundAppearance::Transparent,
-            PencereModu::Opak => WindowBackgroundAppearance::Opaque,
+        // ust_sinir = false iken pencere geleneksel/klasik gorunum alir:
+        // seffaflik/blur devre disi, kose kavisi 0.
+        let pencere_gorunum = if !d.yerlesim.ust_sinir {
+            WindowBackgroundAppearance::Opaque
+        } else {
+            match d.pencere.pencere_modu {
+                PencereModu::Otomatik => sistem_blur_destegi(),
+                PencereModu::Seffaf => WindowBackgroundAppearance::Transparent,
+                PencereModu::Opak => WindowBackgroundAppearance::Opaque,
+            }
         };
 
         let mut pencere_bg = hex_renk(&d.pencere.arka_plan);

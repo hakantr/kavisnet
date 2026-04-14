@@ -21,8 +21,9 @@ impl AnaPanel {
 }
 
 impl Render for AnaPanel {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let tema = cx.global::<Tema>();
+        window.set_background_appearance(tema.pencere_gorunum);
 
         let icerik_satiri = div()
             .flex_1()
@@ -202,7 +203,7 @@ pub struct UstBar;
 
 impl UstBar {
     pub fn render(&self, tema: &Tema) -> impl IntoElement {
-        div()
+        let mut kok = div()
             .id("ust-bar")
             .w_full()
             .h(tema.ust_bar_yukseklik)
@@ -212,7 +213,13 @@ impl UstBar {
             .items_center()
             .justify_between()
             .pl(tema.ust_bar_sol_bosluk)
-            .window_control_area(WindowControlArea::Drag)
+            .window_control_area(WindowControlArea::Drag);
+
+        if !tema.ust_sinir {
+            kok = kok.border_b_1().border_color(tema.ust_bar_ayirici);
+        }
+
+        kok
             .on_mouse_down(MouseButton::Left, |ev, window, _cx| {
                 if ev.click_count == 2 {
                     #[cfg(target_os = "macos")]
