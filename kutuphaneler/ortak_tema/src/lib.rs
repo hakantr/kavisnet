@@ -122,6 +122,8 @@ pub struct TemaDosyasi {
 #[derive(Deserialize, Serialize)]
 pub struct YerlesimBolumu {
     pub sol_panel_genislik: f64,
+    pub calisma_yuzeyi_kavis: f64,
+    pub calisma_yuzeyi_kavisli_mi: bool,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -217,6 +219,8 @@ impl TemaDosyasi {
             },
             yerlesim: YerlesimBolumu {
                 sol_panel_genislik: 220.0,
+                calisma_yuzeyi_kavis: 8.0,
+                calisma_yuzeyi_kavisli_mi: true,
             },
             ust_bar: UstBarBolumu {
                 yukseklik: 40.0,
@@ -296,6 +300,8 @@ pub struct Tema {
     pub ust_bar_yukseklik: Pixels,
     pub sol_panel_genislik: Pixels,
     pub ust_bar_sol_bosluk: Pixels,
+    pub calisma_yuzeyi_kavis: Pixels,
+    pub calisma_yuzeyi_kavisli_mi: bool,
 
     // ── Ust bar ──
     pub ust_bar_arka_plan: Hsla,
@@ -455,6 +461,8 @@ impl Tema {
             ust_bar_yukseklik: px(d.ust_bar.yukseklik as f32),
             sol_panel_genislik: px(d.yerlesim.sol_panel_genislik as f32),
             ust_bar_sol_bosluk: px(d.ust_bar.sol_bosluk as f32),
+            calisma_yuzeyi_kavis: px(d.yerlesim.calisma_yuzeyi_kavis as f32),
+            calisma_yuzeyi_kavisli_mi: d.yerlesim.calisma_yuzeyi_kavisli_mi,
 
             ust_bar_arka_plan: hex_renk(&d.ust_bar.arka_plan),
             ust_bar_metin: hex_renk(&d.ust_bar.metin),

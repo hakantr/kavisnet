@@ -21,14 +21,14 @@ impl AnaPanel {
 impl Render for AnaPanel {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let tema = cx.global::<Tema>();
-        let kavis = tema.pencere_kavis;
+        let kavis = tema.calisma_yuzeyi_kavis;
 
         div()
             .size_full()
             .flex()
             .flex_row()
             .bg(tema.pencere_arka_plan)
-            .rounded(kavis)
+            .rounded_tl(kavis)
             .overflow_hidden()
             .child(self.sol_menu.render(tema))
             .child(self.calisma_yuzeyi.render(tema))
@@ -231,20 +231,20 @@ impl CalismaYuzeyi {
     }
 
     pub fn render(&self, tema: &Tema) -> impl IntoElement {
-        let kavis = tema.pencere_kavis;
-
-        div()
+        let mut base = div()
             .id("calisma-yuzeyi")
             .flex_1()
             .flex()
             .flex_col()
             .bg(tema.yuzey_1)
-            .rounded_tr(kavis)
-            .rounded_br(kavis)
             .overflow_hidden()
             .border_l_1()
-            .border_color(tema.kenarlik)
-            .child(self.ust_bar.render(tema))
-            .child(div().id("icerik").flex_1())
+            .border_color(tema.kenarlik);
+
+        if tema.calisma_yuzeyi_kavisli_mi {
+            base = base.rounded_tl(tema.calisma_yuzeyi_kavis);
+        }
+
+        base.child(div().id("icerik").flex_1())
     }
 }
