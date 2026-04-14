@@ -73,6 +73,7 @@ pub enum PencereModu {
 #[derive(Deserialize, Serialize)]
 pub struct TemaDosyasi {
     pub pencere: PencereBolumu,
+    pub yerlesim: YerlesimBolumu,
     pub ust_bar: UstBarBolumu,
     pub metin: MetinBolumu,
     pub buton: ButonBolumu,
@@ -82,6 +83,11 @@ pub struct TemaDosyasi {
     pub yuzey: YuzeyBolumu,
     pub durum: DurumBolumu,
     pub golge: GolgeBolumu,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct YerlesimBolumu {
+    pub sol_panel_genislik: f64,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -102,6 +108,8 @@ pub struct PencereBolumu {
 
 #[derive(Deserialize, Serialize)]
 pub struct UstBarBolumu {
+    pub yukseklik: f64,
+    pub sol_bosluk: f64,
     pub arka_plan: String,
     pub metin: String,
     pub ayirici: String,
@@ -173,7 +181,12 @@ impl TemaDosyasi {
                 seffaf_seffaflik: 0.80,
                 kavis: 10.0,
             },
+            yerlesim: YerlesimBolumu {
+                sol_panel_genislik: 220.0,
+            },
             ust_bar: UstBarBolumu {
+                yukseklik: 40.0,
+                sol_bosluk: varsayilan_ust_bar_sol_bosluk(),
                 arka_plan: "#141420".into(),
                 metin: "#E8E8F0".into(),
                 ayirici: "#2A2A3E".into(),
@@ -244,6 +257,11 @@ pub struct Tema {
     pub pencere_gorunum: WindowBackgroundAppearance,
     pub pencere_arka_plan: Hsla,
     pub pencere_kavis: Pixels,
+
+    // ── Yerlesim ──
+    pub ust_bar_yukseklik: Pixels,
+    pub sol_panel_genislik: Pixels,
+    pub ust_bar_sol_bosluk: Pixels,
 
     // ── Ust bar ──
     pub ust_bar_arka_plan: Hsla,
@@ -382,6 +400,10 @@ impl Tema {
             pencere_arka_plan: pencere_bg,
             pencere_kavis,
 
+            ust_bar_yukseklik: px(d.ust_bar.yukseklik as f32),
+            sol_panel_genislik: px(d.yerlesim.sol_panel_genislik as f32),
+            ust_bar_sol_bosluk: px(d.ust_bar.sol_bosluk as f32),
+
             ust_bar_arka_plan: hex_renk(&d.ust_bar.arka_plan),
             ust_bar_metin: hex_renk(&d.ust_bar.metin),
             ust_bar_ayirici: hex_renk(&d.ust_bar.ayirici),
@@ -417,6 +439,16 @@ impl Tema {
             golge,
         }
     }
+}
+
+// ── Platform varsayilan degerleri ──────────────────────────
+
+/// macOS'ta trafik isiklari icin genis bosluk, diger platformlarda dar.
+fn varsayilan_ust_bar_sol_bosluk() -> f64 {
+    #[cfg(target_os = "macos")]
+    { 80.0 }
+    #[cfg(not(target_os = "macos"))]
+    { 12.0 }
 }
 
 // ── Sistem blur destegi algilama ───────────────────────────

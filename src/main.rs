@@ -4,13 +4,9 @@ use gpui::{prelude::FluentBuilder as _, *};
 mod tema;
 use tema::Tema;
 
-const UST_BAR_YÜKSEKLİĞİ: Pixels = px(40.);
-const SOL_PANEL_GENİŞLİĞİ: Pixels = px(120.);
-
-#[cfg(target_os = "macos")]
-const UST_BAR_SOL_BOŞLUK: Pixels = px(80.);
-#[cfg(not(target_os = "macos"))]
-const UST_BAR_SOL_BOŞLUK: Pixels = px(12.);
+// UST_BAR_YÜKSEKLİĞİ ve SOL_PANEL_GENİŞLİĞİ tema uzerinden yonetilir.
+// UST_BAR_SOL_BOŞLUK isletim sistemine gore degisir,
+// varsayilan degeri tema dosyasinda sabitlenir.
 
 // --- Quit action ---
 
@@ -118,7 +114,7 @@ impl UstBar {
         div()
             .id("ust-bar")
             .w_full()
-            .h(UST_BAR_YÜKSEKLİĞİ)
+            .h(tema.ust_bar_yukseklik)
             .flex_shrink_0()
             .bg(tema.ust_bar_arka_plan)
             .border_b_1()
@@ -127,7 +123,7 @@ impl UstBar {
             .flex_row()
             .items_center()
             .justify_between()
-            .pl(UST_BAR_SOL_BOŞLUK)
+            .pl(tema.ust_bar_sol_bosluk)
             .on_mouse_down(MouseButton::Left, |ev, window, _cx| {
                 if ev.click_count == 2 {
                     if cfg!(target_os = "macos") {
@@ -209,11 +205,10 @@ impl Render for App {
             .bg(self.tema.pencere_arka_plan)
             .rounded(kavis)
             .overflow_hidden()
-            // Sol panel alani (120px sabit)
             .child(
                 div()
                     .id("sol-panel")
-                    .w(SOL_PANEL_GENİŞLİĞİ)
+                    .w(self.tema.sol_panel_genislik)
                     .h_full()
                     .flex_shrink_0(),
             )
