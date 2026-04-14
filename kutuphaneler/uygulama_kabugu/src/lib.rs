@@ -8,6 +8,7 @@ pub struct AnaPanel {
     pub ust_bar: UstBar,
     pub sol_menu: SolMenu,
     pub calisma_yuzeyi: CalismaYuzeyi,
+    son_gorunum: Option<WindowBackgroundAppearance>,
 }
 
 impl AnaPanel {
@@ -16,6 +17,7 @@ impl AnaPanel {
             ust_bar: UstBar,
             sol_menu: SolMenu::new(),
             calisma_yuzeyi: CalismaYuzeyi::new(),
+            son_gorunum: None,
         }
     }
 }
@@ -23,7 +25,13 @@ impl AnaPanel {
 impl Render for AnaPanel {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let tema = cx.global::<Tema>();
-        window.set_background_appearance(tema.pencere_gorunum);
+        // Sadece degisiklik oldugunda cagir; aksi halde Wayland'da
+        // update_window → re-render → set_background_appearance sonsuz
+        // dongusu olusur ve CPU kullanimi artar.
+        if self.son_gorunum != Some(tema.pencere_gorunum) {
+            window.set_background_appearance(tema.pencere_gorunum);
+            self.son_gorunum = Some(tema.pencere_gorunum);
+        }
 
         let icerik_satiri = div()
             .flex_1()
