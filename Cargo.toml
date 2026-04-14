@@ -28,6 +28,8 @@ gpui = { version = "*" }
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"
 dirs = "6"
+notify = "8"
+chrono = "0.4"
 
 # Dahili kutuphaneler
 ortak_tema = { path = "kutuphaneler/ortak_tema" }

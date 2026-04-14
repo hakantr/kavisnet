@@ -2,7 +2,41 @@
 
 use gpui::*;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use chrono::Local;
+use std::fs;
+
+// ── Hata Kayitlari ve Loglama ─────────────────────────────
+
+/// Hata loglarinin tutulacagi dizin yolu.
+pub fn hata_log_dizini() -> PathBuf {
+    let mut yol = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    yol.pop(); 
+    yol.push("hata_kayitlari");
+    
+    if !yol.exists() {
+        let _ = fs::create_dir_all(&yol);
+    }
+    yol
+}
+
+/// Temadaki bir hatayi log dosyasina kaydeder.
+fn hatayi_kaydet(hata: &str) {
+    let dizin = hata_log_dizini();
+    let dosya_adi = format!("tema_hatalari_{}.log", Local::now().format("%Y-%m-%d"));
+    let tam_yol = dizin.join(dosya_adi);
+    
+    let zaman = Local::now().format("%H:%M:%S");
+    let log_satiri = format!("[{}] HATA: {}\n", zaman, hata);
+    
+    if let Ok(mut dosya) = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&tam_yol) {
+        use std::io::Write;
+        let _ = writeln!(dosya, "{}", log_satiri);
+    }
+}
 
 // ── Hex renk donusturme ────────────────────────────────────
 
@@ -318,13 +352,16 @@ impl Tema {
                 Ok(icerik) => match toml::from_str::<TemaDosyasi>(&icerik) {
                     Ok(d) => d,
                     Err(e) => {
-                        eprintln!("Tema dosyasi ayristirilamadi: {e}");
-                        eprintln!("Varsayilan tema kullaniliyor.");
+                        let hata_mesaji = format!("Tema dosyasi ayristirilamadi: {e}");
+                        eprintln!("{hata_mesaji}");
+                        hatayi_kaydet(&hata_mesaji);
                         TemaDosyasi::varsayilan()
                     }
                 },
                 Err(e) => {
-                    eprintln!("Tema dosyasi okunamadi: {e}");
+                    let hata_mesaji = format!("Tema dosyasi okunamadi: {e}");
+                    eprintln!("{hata_mesaji}");
+                    hatayi_kaydet(&hata_mesaji);
                     TemaDosyasi::varsayilan()
                 }
             }
@@ -359,6 +396,26 @@ impl Tema {
         };
 
         Self::dosyadan_olustur(&dosya)
+    }
+
+    /// Yeni bir tema dosyasini kontrol eder ve gecerliyse dondurur.
+    pub fn kontrol_et_ve_yukle(yol: &Path) -> Option<Self> {
+        match std::fs::read_to_string(yol) {
+            Ok(icerik) => match toml::from_str::<TemaDosyasi>(&icerik) {
+                Ok(d) => {
+                    println!("Tema dosyasi gecerli, uygulaniyor...");
+                    Some(Self::dosyadan_olustur(&d))
+                },
+                Err(e) => {
+                    hatayi_kaydet(&format!("Canli guncelleme hatasi (ayristirma): {e}"));
+                    None
+                }
+            },
+            Err(e) => {
+                hatayi_kaydet(&format!("Canli guncelleme hatasi (okuma): {e}"));
+                None
+            }
+        }
     }
 
     /// TemaDosyasi'ndan calisma zamani Tema'yi olusturur.
@@ -435,6 +492,8 @@ impl Tema {
         }
     }
 }
+
+impl Global for Tema {}
 
 // ── Platform varsayilan degerleri ──────────────────────────
 
