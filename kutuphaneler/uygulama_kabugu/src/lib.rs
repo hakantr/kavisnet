@@ -1,5 +1,39 @@
 use gpui::*;
 use ortak_tema::Tema;
+use sol_menu::SolMenu;
+
+// ── Ana Panel (Uygulamanın Kök Bileşeni) ──────────────────
+
+pub struct AnaPanel {
+    pub sol_menu: SolMenu,
+    pub calisma_yuzeyi: CalismaYuzeyi,
+}
+
+impl AnaPanel {
+    pub fn new() -> Self {
+        Self {
+            sol_menu: SolMenu::new(),
+            calisma_yuzeyi: CalismaYuzeyi::new(),
+        }
+    }
+}
+
+impl Render for AnaPanel {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let tema = cx.global::<Tema>();
+        let kavis = tema.pencere_kavis;
+
+        div()
+            .size_full()
+            .flex()
+            .flex_row()
+            .bg(tema.pencere_arka_plan)
+            .rounded(kavis)
+            .overflow_hidden()
+            .child(self.sol_menu.render(tema))
+            .child(self.calisma_yuzeyi.render(tema))
+    }
+}
 
 // ── Pencere kontrol butonlari (Windows / Linux) ────────────
 
