@@ -1,0 +1,4 @@
+[package]
+name = "sunucu_istemcisi"
+version.workspace = true
+edition.workspace = true

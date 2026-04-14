@@ -1,0 +1,7 @@
+[package]
+name = "kurum"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ortak_tipler.workspace = true

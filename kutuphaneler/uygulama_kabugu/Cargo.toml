@@ -1,0 +1,8 @@
+[package]
+name = "uygulama_kabugu"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+gpui.workspace = true
+ortak_tema.workspace = true

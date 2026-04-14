@@ -1,0 +1,4 @@
+[package]
+name = "ortak_tipler"
+version.workspace = true
+edition.workspace = true

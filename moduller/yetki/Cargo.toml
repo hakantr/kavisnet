@@ -1,0 +1,7 @@
+[package]
+name = "yetki"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ortak_tipler.workspace = true

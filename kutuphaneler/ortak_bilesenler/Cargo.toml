@@ -1,0 +1,8 @@
+[package]
+name = "ortak_bilesenler"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+gpui.workspace = true
+ortak_tema.workspace = true

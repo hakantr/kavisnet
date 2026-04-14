@@ -1,18 +1,7 @@
-#[allow(unused_imports)]
-use gpui::{prelude::FluentBuilder as _, *};
+use gpui::*;
+use ortak_tema::Tema;
 
-mod tema;
-use tema::Tema;
-
-// UST_BAR_YÜKSEKLİĞİ ve SOL_PANEL_GENİŞLİĞİ tema uzerinden yonetilir.
-// UST_BAR_SOL_BOŞLUK isletim sistemine gore degisir,
-// varsayilan degeri tema dosyasinda sabitlenir.
-
-// --- Quit action ---
-
-actions!(app, [Quit]);
-
-// --- Pencere kontrol butonlari (Windows / Linux) ---
+// ── Pencere kontrol butonlari (Windows / Linux) ────────────
 
 #[derive(Clone, Copy)]
 #[allow(dead_code)]
@@ -105,12 +94,18 @@ fn pencere_kontrolleri(tema: &Tema) -> Stateful<Div> {
     }
 }
 
-// --- Ust bar ---
+// ── Kapatma kontrolu ──────────────────────────────────────
 
-struct UstBar;
+pub fn kapatma_istegi(_window: &mut Window, _cx: &mut gpui::App) -> bool {
+    true
+}
+
+// ── Ust bar ───────────────────────────────────────────────
+
+pub struct UstBar;
 
 impl UstBar {
-    fn render(&self, tema: &Tema, _window: &Window, _cx: &Context<App>) -> impl IntoElement {
+    pub fn render(&self, tema: &Tema) -> impl IntoElement {
         div()
             .id("ust-bar")
             .w_full()
@@ -153,20 +148,18 @@ impl UstBar {
     }
 }
 
-// --- Kapatma kontrolu ---
+// ── Calisma yuzeyi ────────────────────────────────────────
 
-fn kapatma_istegi(_window: &mut Window, _cx: &mut gpui::App) -> bool {
-    true
-}
-
-// --- Calisma yuzeyi ---
-
-struct CalismaYuzeyi {
+pub struct CalismaYuzeyi {
     ust_bar: UstBar,
 }
 
 impl CalismaYuzeyi {
-    fn render(&self, tema: &Tema, window: &Window, cx: &Context<App>) -> impl IntoElement {
+    pub fn new() -> Self {
+        Self { ust_bar: UstBar }
+    }
+
+    pub fn render(&self, tema: &Tema) -> impl IntoElement {
         let kavis = tema.pencere_kavis;
 
         div()
@@ -180,91 +173,7 @@ impl CalismaYuzeyi {
             .overflow_hidden()
             .border_l_1()
             .border_color(tema.kenarlik)
-            // Ust bar
-            .child(self.ust_bar.render(tema, window, cx))
-            // Icerik alani (ileride dolacak)
+            .child(self.ust_bar.render(tema))
             .child(div().id("icerik").flex_1())
     }
-}
-
-// --- App ---
-
-struct App {
-    calisma_yuzeyi: CalismaYuzeyi,
-    tema: Tema,
-}
-
-impl Render for App {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let kavis = self.tema.pencere_kavis;
-
-        div()
-            .size_full()
-            .flex()
-            .flex_row()
-            .bg(self.tema.pencere_arka_plan)
-            .rounded(kavis)
-            .overflow_hidden()
-            .child(
-                div()
-                    .id("sol-panel")
-                    .w(self.tema.sol_panel_genislik)
-                    .h_full()
-                    .flex_shrink_0(),
-            )
-            // Calisma yuzeyi (kalan alani doldurur)
-            .child(self.calisma_yuzeyi.render(&self.tema, window, cx))
-    }
-}
-
-fn main() {
-    let tema = Tema::yukle();
-
-    Application::new().run(move |cx| {
-        cx.on_action(|_: &Quit, cx| {
-            cx.quit();
-        });
-
-        cx.bind_keys([KeyBinding::new("cmd-q", Quit, None)]);
-
-        cx.set_menus(vec![Menu {
-            name: "gpui_app".into(),
-            items: vec![MenuItem::action("Quit", Quit)],
-        }]);
-
-        cx.spawn(async move |cx| {
-            let options = WindowOptions {
-                titlebar: Some(TitlebarOptions {
-                    appears_transparent: true,
-                    traffic_light_position: Some(point(px(8.), px(12.))),
-                    ..Default::default()
-                }),
-                window_background: tema.pencere_gorunum,
-                is_resizable: true,
-                ..Default::default()
-            };
-
-            let window_handle = cx
-                .open_window(options, |_window, cx| {
-                    cx.new(|_cx| App {
-                        calisma_yuzeyi: CalismaYuzeyi { ust_bar: UstBar },
-                        tema,
-                    })
-                })
-                .expect("Pencere açılamadı");
-
-            cx.update_window(window_handle.into(), |_root, window, cx| {
-                window.on_window_should_close(cx, |window, cx| {
-                    if kapatma_istegi(window, cx) {
-                        cx.quit();
-                        true
-                    } else {
-                        false
-                    }
-                });
-            })
-            .ok();
-        })
-        .detach();
-    });
 }

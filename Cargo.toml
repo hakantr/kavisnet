@@ -1,10 +1,46 @@
-[package]
-name = "gpui_app"
+[workspace]
+resolver = "2"
+members = [
+    "uygulama",
+    "kutuphaneler/calisma_sekmeleri",
+    "kutuphaneler/modul_sistemi",
+    "kutuphaneler/ortak_bilesenler",
+    "kutuphaneler/ortak_ikonlar",
+    "kutuphaneler/ortak_tema",
+    "kutuphaneler/ortak_tipler",
+    "kutuphaneler/sol_menu",
+    "kutuphaneler/sunucu_istemcisi",
+    "kutuphaneler/tema",
+    "kutuphaneler/uygulama_kabugu",
+    "moduller/arsiv",
+    "moduller/kullanici_yonetimi",
+    "moduller/kurum",
+    "moduller/yetki",
+]
+default-members = ["uygulama"]
+
+[workspace.package]
 version = "0.1.0"
 edition = "2024"
 
-[dependencies]
+[workspace.dependencies]
 gpui = { version = "*" }
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"
 dirs = "6"
+
+# Dahili kutuphaneler
+ortak_tema = { path = "kutuphaneler/ortak_tema" }
+ortak_tipler = { path = "kutuphaneler/ortak_tipler" }
+ortak_bilesenler = { path = "kutuphaneler/ortak_bilesenler" }
+ortak_ikonlar = { path = "kutuphaneler/ortak_ikonlar" }
+uygulama_kabugu = { path = "kutuphaneler/uygulama_kabugu" }
+sol_menu = { path = "kutuphaneler/sol_menu" }
+calisma_sekmeleri = { path = "kutuphaneler/calisma_sekmeleri" }
+modul_sistemi = { path = "kutuphaneler/modul_sistemi" }
+sunucu_istemcisi = { path = "kutuphaneler/sunucu_istemcisi" }
+tema = { path = "kutuphaneler/tema" }
+arsiv = { path = "moduller/arsiv" }
+kullanici_yonetimi = { path = "moduller/kullanici_yonetimi" }
+kurum = { path = "moduller/kurum" }
+yetki = { path = "moduller/yetki" }

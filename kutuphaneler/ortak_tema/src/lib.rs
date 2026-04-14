@@ -247,7 +247,7 @@ pub fn tema_dosya_yolu() -> PathBuf {
     yol
 }
 
-// ── Calismna zamani tema yapisi ────────────────────────────
+// ── Calisma zamani tema yapisi ─────────────────────────────
 
 /// Tum uygulama renklerini tek bir yerden yoneten tema yapisi.
 /// TOML dosyasindan yuklenir, pencere modu otomatik cozumlenir.
@@ -330,7 +330,6 @@ impl Tema {
             }
         } else {
             let varsayilan = TemaDosyasi::varsayilan();
-            // Varsayilan tema dosyasini diske yaz
             if let Some(dizin) = yol.parent() {
                 let _ = std::fs::create_dir_all(dizin);
             }
@@ -364,14 +363,12 @@ impl Tema {
 
     /// TemaDosyasi'ndan calisma zamani Tema'yi olusturur.
     fn dosyadan_olustur(d: &TemaDosyasi) -> Self {
-        // Pencere gorunumunu cozumle
         let pencere_gorunum = match d.pencere.pencere_modu {
             PencereModu::Otomatik => sistem_blur_destegi(),
             PencereModu::Seffaf => WindowBackgroundAppearance::Transparent,
             PencereModu::Opak => WindowBackgroundAppearance::Opaque,
         };
 
-        // Pencere arka plan rengini moda gore alpha uygula
         let mut pencere_bg = hex_renk(&d.pencere.arka_plan);
         match pencere_gorunum {
             WindowBackgroundAppearance::Blurred => {
@@ -385,13 +382,11 @@ impl Tema {
             }
         }
 
-        // Pencere kavisi: opak modda kavis uygulanmaz
         let pencere_kavis = match pencere_gorunum {
             WindowBackgroundAppearance::Opaque => px(0.),
             _ => px(d.pencere.kavis as f32),
         };
 
-        // Golge rengi + seffaflik
         let mut golge = hex_renk(&d.golge.renk);
         golge.a = d.golge.seffaflik as f32;
 

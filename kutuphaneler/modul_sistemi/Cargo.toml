@@ -1,0 +1,4 @@
+[package]
+name = "modul_sistemi"
+version.workspace = true
+edition.workspace = true

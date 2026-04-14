@@ -1,0 +1,10 @@
+[package]
+name = "gpui_app"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+gpui.workspace = true
+ortak_tema.workspace = true
+uygulama_kabugu.workspace = true
+sol_menu.workspace = true
