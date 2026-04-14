@@ -23,7 +23,6 @@ impl AnaPanel {
 impl Render for AnaPanel {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let tema = cx.global::<Tema>();
-        let kavis = tema.calisma_yuzeyi_kavis;
 
         let icerik_satiri = div()
             .flex_1()
@@ -38,7 +37,7 @@ impl Render for AnaPanel {
             .flex()
             .flex_col()
             .bg(tema.pencere_arka_plan)
-            .rounded_tl(kavis)
+            .rounded(tema.pencere_kavis)
             .overflow_hidden();
 
         if tema.ust_sinir {
@@ -255,7 +254,9 @@ impl CalismaYuzeyi {
             .bg(tema.yuzey_1)
             .overflow_hidden()
             .border_l_1()
-            .border_color(tema.kenarlik);
+            .border_color(tema.kenarlik)
+            .rounded_tr(tema.pencere_kavis)
+            .rounded_br(tema.pencere_kavis);
 
         if tema.calisma_yuzeyi_kavisli_mi {
             base = base.rounded_tl(tema.calisma_yuzeyi_kavis);
