@@ -25,23 +25,34 @@ impl Render for AnaPanel {
         let tema = cx.global::<Tema>();
         let kavis = tema.calisma_yuzeyi_kavis;
 
-        div()
+        let icerik_satiri = div()
+            .flex_1()
+            .flex()
+            .flex_row()
+            .overflow_hidden()
+            .child(self.sol_menu.render(tema))
+            .child(self.calisma_yuzeyi.render(tema));
+
+        let base = div()
             .size_full()
             .flex()
             .flex_col()
             .bg(tema.pencere_arka_plan)
             .rounded_tl(kavis)
-            .overflow_hidden()
-            .child(self.ust_bar.render(tema))
-            .child(
+            .overflow_hidden();
+
+        if tema.ust_sinir {
+            base.relative().child(icerik_satiri).child(
                 div()
-                    .flex_1()
-                    .flex()
-                    .flex_row()
-                    .overflow_hidden()
-                    .child(self.sol_menu.render(tema))
-                    .child(self.calisma_yuzeyi.render(tema)),
+                    .absolute()
+                    .top_0()
+                    .left_0()
+                    .right_0()
+                    .child(self.ust_bar.render(tema)),
             )
+        } else {
+            base.child(self.ust_bar.render(tema)).child(icerik_satiri)
+        }
     }
 }
 
@@ -195,19 +206,21 @@ impl UstBar {
             .items_center()
             .justify_between()
             .pl(tema.ust_bar_sol_bosluk)
+            .window_control_area(WindowControlArea::Drag)
             .on_mouse_down(MouseButton::Left, |ev, window, _cx| {
                 if ev.click_count == 2 {
-                    if cfg!(target_os = "macos") {
-                        window.titlebar_double_click();
-                    } else {
-                        window.zoom_window();
-                    }
+                    #[cfg(target_os = "macos")]
+                    window.titlebar_double_click();
+                    #[cfg(not(target_os = "macos"))]
+                    window.zoom_window();
+                } else {
+                    #[cfg(target_os = "linux")]
+                    window.start_window_move();
                 }
             })
             .child(
                 div()
                     .id("ust-bar-icerik")
-                    .window_control_area(WindowControlArea::Drag)
                     .flex()
                     .flex_row()
                     .items_center()
