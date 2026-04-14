@@ -38,7 +38,7 @@ impl Render for AnaPanel {
 /// Uygulamanın ana penceresini açar ve yapılandırır.
 pub fn ana_pencere_ac(cx: &mut App) {
     let tema = *cx.global::<Tema>();
-    
+
     cx.spawn(async move |cx| {
         let options = WindowOptions {
             titlebar: Some(TitlebarOptions {
@@ -52,9 +52,7 @@ pub fn ana_pencere_ac(cx: &mut App) {
         };
 
         let window_handle = cx
-            .open_window(options, |_window, cx| {
-                cx.new(|_cx| AnaPanel::new())
-            })
+            .open_window(options, |_window, cx| cx.new(|_cx| AnaPanel::new()))
             .expect("Pencere açılamadı");
 
         cx.update_window(window_handle.into(), |_root, window, cx| {
@@ -239,7 +237,8 @@ impl CalismaYuzeyi {
             .bg(tema.yuzey_1)
             .overflow_hidden()
             .border_l_1()
-            .border_color(tema.kenarlik);
+            .border_color(tema.kenarlik)
+            .child(self.ust_bar.render(tema));
 
         if tema.calisma_yuzeyi_kavisli_mi {
             base = base.rounded_tl(tema.calisma_yuzeyi_kavis);
