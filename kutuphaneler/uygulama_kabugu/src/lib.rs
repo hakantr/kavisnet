@@ -35,6 +35,43 @@ impl Render for AnaPanel {
     }
 }
 
+/// Uygulamanın ana penceresini açar ve yapılandırır.
+pub fn ana_pencere_ac(cx: &mut App) {
+    let tema = *cx.global::<Tema>();
+    
+    cx.spawn(async move |cx| {
+        let options = WindowOptions {
+            titlebar: Some(TitlebarOptions {
+                appears_transparent: true,
+                traffic_light_position: Some(point(px(8.), px(12.))),
+                ..Default::default()
+            }),
+            window_background: tema.pencere_gorunum,
+            is_resizable: true,
+            ..Default::default()
+        };
+
+        let window_handle = cx
+            .open_window(options, |_window, cx| {
+                cx.new(|_cx| AnaPanel::new())
+            })
+            .expect("Pencere açılamadı");
+
+        cx.update_window(window_handle.into(), |_root, window, cx| {
+            window.on_window_should_close(cx, |window, cx| {
+                if kapatma_istegi(window, cx) {
+                    cx.quit();
+                    true
+                } else {
+                    false
+                }
+            });
+        })
+        .ok();
+    })
+    .detach();
+}
+
 // ── Pencere kontrol butonlari (Windows / Linux) ────────────
 
 #[derive(Clone, Copy)]

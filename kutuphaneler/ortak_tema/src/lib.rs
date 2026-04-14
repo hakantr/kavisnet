@@ -495,6 +495,47 @@ impl Tema {
 
 impl Global for Tema {}
 
+/// Tema dosyasini arka planda izler ve degisiklik oldugunda otomatik gunceller.
+pub fn temayi_izle(cx: &mut App) {
+    use notify::{Watcher, RecursiveMode};
+    use std::sync::mpsc::channel;
+    use std::time::Duration;
+
+    let yol = tema_dosya_yolu();
+    
+    cx.spawn(async move |mut cx| {
+        let (tx, rx) = channel();
+        let mut _watcher = notify::recommended_watcher(move |res| {
+            if let Ok(_) = res {
+                let _ = tx.send(());
+            }
+        }).expect("Tema izleyici başlatılamadı");
+
+        if let Some(parent) = yol.parent() {
+            let _ = _watcher.watch(parent, RecursiveMode::NonRecursive);
+        }
+
+        loop {
+            let mut degisiklik_var = false;
+            while let Ok(_) = rx.try_recv() {
+                degisiklik_var = true;
+            }
+
+            if degisiklik_var {
+                Timer::after(Duration::from_millis(100)).await;
+                let yeni_yol = yol.clone();
+                let _ = cx.update(|cx| {
+                    if let Some(yeni_tema) = Tema::kontrol_et_ve_yukle(&yeni_yol) {
+                        cx.set_global(yeni_tema);
+                        println!("Tema canli olarak guncellendi.");
+                    }
+                });
+            }
+            Timer::after(Duration::from_millis(250)).await;
+        }
+    }).detach();
+}
+
 // ── Platform varsayilan degerleri ──────────────────────────
 
 /// macOS'ta trafik isiklari icin genis bosluk, diger platformlarda dar.
