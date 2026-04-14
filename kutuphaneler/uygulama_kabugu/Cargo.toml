@@ -7,3 +7,6 @@ edition.workspace = true
 gpui.workspace = true
 ortak_tema.workspace = true
 sol_menu.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+dirs.workspace = true

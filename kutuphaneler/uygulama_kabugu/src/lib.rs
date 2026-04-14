@@ -55,9 +55,15 @@ impl Render for AnaPanel {
     }
 }
 
+/// Uygulama app_id (Linux'ta pencere ↔ .desktop eslesmesi icin).
+pub const UYGULAMA_APP_ID: &str = "gpui_app";
+
 /// Uygulamanın ana penceresini açar ve yapılandırır.
 pub fn ana_pencere_ac(cx: &mut App) {
     let tema = *cx.global::<Tema>();
+
+    #[cfg(target_os = "linux")]
+    linux_ikon_kur();
 
     cx.spawn(async move |cx| {
         let options = WindowOptions {
@@ -68,6 +74,7 @@ pub fn ana_pencere_ac(cx: &mut App) {
             }),
             window_background: tema.pencere_gorunum,
             is_resizable: true,
+            app_id: Some(UYGULAMA_APP_ID.to_string()),
             ..Default::default()
         };
 
@@ -255,13 +262,126 @@ impl CalismaYuzeyi {
             .overflow_hidden()
             .border_l_1()
             .border_color(tema.kenarlik)
-            .rounded_tr(tema.pencere_kavis)
             .rounded_br(tema.pencere_kavis);
+
+        if tema.ust_sinir {
+            base = base.rounded_tr(tema.pencere_kavis);
+        }
 
         if tema.calisma_yuzeyi_kavisli_mi {
             base = base.rounded_tl(tema.calisma_yuzeyi_kavis);
         }
 
         base.child(div().id("icerik").flex_1())
+    }
+}
+
+// ── Linux: ikon + .desktop kurulumu ───────────────────────
+
+/// XDG Icon Theme spec'ine gore yuklenecek hicolor boyutlari ve gomulu PNG
+/// verileri. DE'ler bagclama gore en uygun olani secer (16: sistem tepsisi,
+/// 32–48: pencere basligi / gorev degistirici, 128+: dock / baslatici).
+#[cfg(target_os = "linux")]
+const UYGULAMA_IKONLARI: &[(u32, &[u8])] = &[
+    (16, include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../resimler/ikonlar/ikon_02_16.png"))),
+    (32, include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../resimler/ikonlar/ikon_02_32.png"))),
+    (48, include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../resimler/ikonlar/ikon_02_48.png"))),
+    (64, include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../resimler/ikonlar/ikon_02_64.png"))),
+    (128, include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../resimler/ikonlar/ikon_02_128.png"))),
+    (256, include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../resimler/ikonlar/ikon_02_256.png"))),
+    (512, include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../resimler/ikonlar/ikon_02_512.png"))),
+];
+
+/// Linux'ta dock/taskbar ikonu icin .desktop ve PNG'yi kullanici veri dizinine
+/// yazar. XDG standardi olan bu yaklasim GNOME, KDE Plasma, XFCE, MATE,
+/// Cinnamon, LXQt, Sway, i3, Hyprland vb. pencere yoneticilerinde hem X11 hem
+/// Wayland oturumlarinda calisir. GPUI app_id degeri X11 WM_CLASS'a ve
+/// Wayland xdg-shell app_id'ye yazildigindan .desktop StartupWMClass alaniyla
+/// eslesir.
+#[cfg(target_os = "linux")]
+fn linux_ikon_kur() {
+    let Some(veri_dizini) = dirs::data_dir() else {
+        return;
+    };
+
+    // 1) PNG'leri hicolor ikon temasi altina coklu boyut olarak yaz.
+    //    Hicolor, XDG Icon Theme spec'ine gore tum DE'lerin bakmak zorunda
+    //    oldugu varsayilan temadir.
+    let hicolor_koku = veri_dizini.join("icons/hicolor");
+    let mut herhangi_guncellendi = false;
+    let mut son_ikon_yolu: Option<std::path::PathBuf> = None;
+
+    for &(boyut, veri) in UYGULAMA_IKONLARI {
+        let boyut_dizini = hicolor_koku.join(format!("{boyut}x{boyut}/apps"));
+        if std::fs::create_dir_all(&boyut_dizini).is_err() {
+            continue;
+        }
+        let yol = boyut_dizini.join(format!("{UYGULAMA_APP_ID}.png"));
+        let guncellenmeli = match std::fs::metadata(&yol) {
+            Ok(m) => m.len() as usize != veri.len(),
+            Err(_) => true,
+        };
+        if guncellenmeli {
+            if std::fs::write(&yol, veri).is_ok() {
+                herhangi_guncellendi = true;
+            }
+        }
+        son_ikon_yolu = Some(yol);
+    }
+
+    // 2) .desktop dosyasini yaz. Icon= icin tema adi yerine mutlak yol
+    //    kullanmak herhangi bir tema aramasina ihtiyac birakmaz; ikon
+    //    bulunamama ihtimalini sifira indirir. En buyuk boyuttaki dosyaya
+    //    isaret ederiz (eski/ekstra DE'ler icin).
+    let exe_yolu = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.to_str().map(String::from))
+        .unwrap_or_else(|| UYGULAMA_APP_ID.into());
+
+    let ikon_mutlak_yol = son_ikon_yolu
+        .as_ref()
+        .and_then(|p| p.to_str())
+        .map(String::from)
+        .unwrap_or_else(|| UYGULAMA_APP_ID.into());
+
+    let desktop_dizini = veri_dizini.join("applications");
+    if std::fs::create_dir_all(&desktop_dizini).is_err() {
+        return;
+    }
+    let desktop_yolu = desktop_dizini.join(format!("{UYGULAMA_APP_ID}.desktop"));
+    let desktop_icerik = format!(
+        "[Desktop Entry]\n\
+         Type=Application\n\
+         Name=gpui_app\n\
+         Exec={exe_yolu}\n\
+         Icon={ikon_mutlak_yol}\n\
+         StartupWMClass={UYGULAMA_APP_ID}\n\
+         StartupNotify=true\n\
+         Terminal=false\n\
+         Categories=Utility;\n"
+    );
+
+    let desktop_guncellenmeli = std::fs::read_to_string(&desktop_yolu)
+        .map(|m| m != desktop_icerik)
+        .unwrap_or(true);
+    if desktop_guncellenmeli {
+        let _ = std::fs::write(&desktop_yolu, desktop_icerik);
+    }
+
+    // 3) GTK/KDE ikon onbelleklerini yenile (best-effort; cogu modern DE
+    //    zaten otomatik algiliyor, ama eski kurulumlarda yardimci olur).
+    if herhangi_guncellendi {
+        let _ = std::process::Command::new("gtk-update-icon-cache")
+            .arg("-q")
+            .arg("-t")
+            .arg("-f")
+            .arg(&hicolor_koku)
+            .status();
+    }
+    if desktop_guncellenmeli {
+        let _ = std::process::Command::new("update-desktop-database")
+            .arg("-q")
+            .arg(&desktop_dizini)
+            .status();
     }
 }
