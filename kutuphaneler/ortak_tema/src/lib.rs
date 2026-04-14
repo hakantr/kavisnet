@@ -1,19 +1,19 @@
 #![allow(dead_code)]
 
+use chrono::Local;
 use gpui::*;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
-use chrono::Local;
 use std::fs;
+use std::path::{Path, PathBuf};
 
 // ── Hata Kayitlari ve Loglama ─────────────────────────────
 
 /// Hata loglarinin tutulacagi dizin yolu.
 pub fn hata_log_dizini() -> PathBuf {
     let mut yol = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    yol.pop(); 
+    yol.pop();
     yol.push("hata_kayitlari");
-    
+
     if !yol.exists() {
         let _ = fs::create_dir_all(&yol);
     }
@@ -25,14 +25,15 @@ fn hatayi_kaydet(hata: &str) {
     let dizin = hata_log_dizini();
     let dosya_adi = format!("tema_hatalari_{}.log", Local::now().format("%Y-%m-%d"));
     let tam_yol = dizin.join(dosya_adi);
-    
+
     let zaman = Local::now().format("%H:%M:%S");
     let log_satiri = format!("[{}] HATA: {}\n", zaman, hata);
-    
+
     if let Ok(mut dosya) = fs::OpenOptions::new()
         .create(true)
         .append(true)
-        .open(&tam_yol) {
+        .open(&tam_yol)
+    {
         use std::io::Write;
         let _ = writeln!(dosya, "{}", log_satiri);
     }
@@ -220,9 +221,9 @@ impl TemaDosyasi {
             },
             yerlesim: YerlesimBolumu {
                 sol_panel_genislik: 220.0,
-                calisma_yuzeyi_kavis: 8.0,
+                calisma_yuzeyi_kavis: 10.0,
                 calisma_yuzeyi_kavisli_mi: true,
-                ust_sinir: false,
+                ust_sinir: true,
             },
             ust_bar: UstBarBolumu {
                 yukseklik: 40.0,
@@ -414,7 +415,7 @@ impl Tema {
                 Ok(d) => {
                     println!("Tema dosyasi gecerli, uygulaniyor...");
                     Some(Self::dosyadan_olustur(&d))
-                },
+                }
                 Err(e) => {
                     hatayi_kaydet(&format!("Canli guncelleme hatasi (ayristirma): {e}"));
                     None
@@ -509,19 +510,20 @@ impl Global for Tema {}
 
 /// Tema dosyasini arka planda izler ve degisiklik oldugunda otomatik gunceller.
 pub fn temayi_izle(cx: &mut App) {
-    use notify::{Watcher, RecursiveMode};
+    use notify::{RecursiveMode, Watcher};
     use std::sync::mpsc::channel;
     use std::time::Duration;
 
     let yol = tema_dosya_yolu();
-    
+
     cx.spawn(async move |mut cx| {
         let (tx, rx) = channel();
         let mut _watcher = notify::recommended_watcher(move |res| {
             if let Ok(_) = res {
                 let _ = tx.send(());
             }
-        }).expect("Tema izleyici başlatılamadı");
+        })
+        .expect("Tema izleyici başlatılamadı");
 
         if let Some(parent) = yol.parent() {
             let _ = _watcher.watch(parent, RecursiveMode::NonRecursive);
@@ -545,7 +547,8 @@ pub fn temayi_izle(cx: &mut App) {
             }
             Timer::after(Duration::from_millis(250)).await;
         }
-    }).detach();
+    })
+    .detach();
 }
 
 // ── Platform varsayilan degerleri ──────────────────────────
@@ -553,9 +556,13 @@ pub fn temayi_izle(cx: &mut App) {
 /// macOS'ta trafik isiklari icin genis bosluk, diger platformlarda dar.
 fn varsayilan_ust_bar_sol_bosluk() -> f64 {
     #[cfg(target_os = "macos")]
-    { 80.0 }
+    {
+        80.0
+    }
     #[cfg(not(target_os = "macos"))]
-    { 12.0 }
+    {
+        12.0
+    }
 }
 
 // ── Sistem blur destegi algilama ───────────────────────────
