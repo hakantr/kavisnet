@@ -84,6 +84,7 @@ pub fn ana_pencere_ac(cx: &mut App) {
                 ..Default::default()
             }),
             window_background: tema.pencere_gorunum,
+            window_decorations: Some(WindowDecorations::Client),
             is_resizable: true,
             app_id: Some(UYGULAMA_APP_ID.to_string()),
             ..Default::default()
