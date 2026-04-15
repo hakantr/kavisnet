@@ -1,5 +1,5 @@
 use gpui::*;
-use ortak_tema::{temayi_izle, Tema};
+use ortak_tema::{Tema, temayi_izle};
 use uygulama_kabugu::ana_pencere_ac;
 
 // ── Actions ───────────────────────────────────────────────
@@ -14,12 +14,12 @@ fn main() {
     Application::new().run(move |cx| {
         // 1. Temayi kur
         cx.set_global(tema);
-        
+
         // 2. Aksiyonlari ve menuleri ayarla
         cx.on_action(|_: &Quit, cx| cx.quit());
         cx.bind_keys([KeyBinding::new("cmd-q", Quit, None)]);
         cx.set_menus(vec![Menu {
-            name: "gpui_app".into(),
+            name: "KavisNet".into(),
             items: vec![MenuItem::action("Quit", Quit)],
         }]);
 

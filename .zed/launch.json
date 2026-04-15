@@ -1,13 +1,13 @@
 [
   {
-    "label": "Debug gpui_app",
+    "label": "Debug KavisNet",
     "adapter": "CodeLLDB",
     "request": "launch",
-    "program": "$ZED_WORKTREE_ROOT/target/debug/gpui_app",
+    "program": "$ZED_WORKTREE_ROOT/target/debug/KavisNet",
     "cwd": "$ZED_WORKTREE_ROOT",
     "build": {
       "command": "cargo",
-      "args": ["build"]
-    }
-  }
+      "args": ["build"],
+    },
+  },
 ]

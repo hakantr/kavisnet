@@ -278,12 +278,12 @@ impl TemaDosyasi {
 // ── Tema dosya yolu ────────────────────────────────────────
 
 /// Tema dosyasinin yolunu dondurur.
-/// Linux:   ~/.config/gpui_app/tema.toml
-/// macOS:   ~/Library/Application Support/gpui_app/tema.toml
-/// Windows: %APPDATA%\gpui_app\tema.toml
+/// Linux:   ~/.config/KavisNet/tema.toml
+/// macOS:   ~/Library/Application Support/KavisNet/tema.toml
+/// Windows: %APPDATA%\KavisNet\tema.toml
 pub fn tema_dosya_yolu() -> PathBuf {
     let mut yol = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
-    yol.push("gpui_app");
+    yol.push("KavisNet");
     yol.push("tema.toml");
     yol
 }
@@ -383,7 +383,7 @@ impl Tema {
             match toml::to_string_pretty(&varsayilan) {
                 Ok(icerik) => {
                     let baslik = "\
-# gpui_app Tema Dosyasi
+# KavisNet Tema Dosyasi
 #
 # Pencere modu:
 #   \"otomatik\" - Sistem blur destekliyorsa blur, yoksa seffaf

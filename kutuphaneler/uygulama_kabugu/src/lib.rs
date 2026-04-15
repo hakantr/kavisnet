@@ -67,7 +67,7 @@ impl Render for AnaPanel {
 }
 
 /// Uygulama app_id (Linux'ta pencere ↔ .desktop eslesmesi icin).
-pub const UYGULAMA_APP_ID: &str = "gpui_app";
+pub const UYGULAMA_APP_ID: &str = "KavisNet";
 
 /// Uygulamanın ana penceresini açar ve yapılandırır.
 pub fn ana_pencere_ac(cx: &mut App) {
@@ -230,34 +230,33 @@ impl UstBar {
             kok = kok.border_b_1().border_color(tema.ust_bar_ayirici);
         }
 
-        kok
-            .on_mouse_down(MouseButton::Left, |ev, window, _cx| {
-                if ev.click_count == 2 {
-                    #[cfg(target_os = "macos")]
-                    window.titlebar_double_click();
-                    #[cfg(not(target_os = "macos"))]
-                    window.zoom_window();
-                } else {
-                    #[cfg(target_os = "linux")]
-                    window.start_window_move();
-                }
-            })
-            .child(
-                div()
-                    .id("ust-bar-icerik")
-                    .flex()
-                    .flex_row()
-                    .items_center()
-                    .h_full()
-                    .flex_1()
-                    .child(
-                        div()
-                            .text_color(tema.ust_bar_metin)
-                            .text_size(px(14.))
-                            .child("Merhaba Dünya!"),
-                    ),
-            )
-            .child(pencere_kontrolleri(tema))
+        kok.on_mouse_down(MouseButton::Left, |ev, window, _cx| {
+            if ev.click_count == 2 {
+                #[cfg(target_os = "macos")]
+                window.titlebar_double_click();
+                #[cfg(not(target_os = "macos"))]
+                window.zoom_window();
+            } else {
+                #[cfg(target_os = "linux")]
+                window.start_window_move();
+            }
+        })
+        .child(
+            div()
+                .id("ust-bar-icerik")
+                .flex()
+                .flex_row()
+                .items_center()
+                .h_full()
+                .flex_1()
+                .child(
+                    div()
+                        .text_color(tema.ust_bar_metin)
+                        .text_size(px(14.))
+                        .child("Merhaba Dünya!"),
+                ),
+        )
+        .child(pencere_kontrolleri(tema))
     }
 }
 
@@ -301,13 +300,55 @@ impl CalismaYuzeyi {
 /// 32–48: pencere basligi / gorev degistirici, 128+: dock / baslatici).
 #[cfg(target_os = "linux")]
 const UYGULAMA_IKONLARI: &[(u32, &[u8])] = &[
-    (16, include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../resimler/ikonlar/ikon_02_16.png"))),
-    (32, include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../resimler/ikonlar/ikon_02_32.png"))),
-    (48, include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../resimler/ikonlar/ikon_02_48.png"))),
-    (64, include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../resimler/ikonlar/ikon_02_64.png"))),
-    (128, include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../resimler/ikonlar/ikon_02_128.png"))),
-    (256, include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../resimler/ikonlar/ikon_02_256.png"))),
-    (512, include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../resimler/ikonlar/ikon_02_512.png"))),
+    (
+        16,
+        include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../resimler/ikonlar/ikon_02_16.png"
+        )),
+    ),
+    (
+        32,
+        include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../resimler/ikonlar/ikon_02_32.png"
+        )),
+    ),
+    (
+        48,
+        include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../resimler/ikonlar/ikon_02_48.png"
+        )),
+    ),
+    (
+        64,
+        include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../resimler/ikonlar/ikon_02_64.png"
+        )),
+    ),
+    (
+        128,
+        include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../resimler/ikonlar/ikon_02_128.png"
+        )),
+    ),
+    (
+        256,
+        include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../resimler/ikonlar/ikon_02_256.png"
+        )),
+    ),
+    (
+        512,
+        include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../resimler/ikonlar/ikon_02_512.png"
+        )),
+    ),
 ];
 
 /// Linux'ta dock/taskbar ikonu icin .desktop ve PNG'yi kullanici veri dizinine
@@ -370,7 +411,7 @@ fn linux_ikon_kur() {
     let desktop_icerik = format!(
         "[Desktop Entry]\n\
          Type=Application\n\
-         Name=gpui_app\n\
+         Name=KavisNet\n\
          Exec={exe_yolu}\n\
          Icon={ikon_mutlak_yol}\n\
          StartupWMClass={UYGULAMA_APP_ID}\n\
