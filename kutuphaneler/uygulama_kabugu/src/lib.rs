@@ -265,7 +265,7 @@ impl KontrolTipi {
 
 #[allow(dead_code)]
 fn kontrol_butonu(tip: KontrolTipi, tema: &Tema) -> Stateful<Div> {
-    let hover_bg = match tip {
+    let hover_renk = match tip {
         KontrolTipi::Kapat => tema.kontrol_kapat_hover,
         _ => tema.kontrol_hover,
     };
@@ -280,7 +280,7 @@ fn kontrol_butonu(tip: KontrolTipi, tema: &Tema) -> Stateful<Div> {
         .h_full()
         .text_color(metin_rengi)
         .text_size(px(13.))
-        .hover(move |s| s.bg(hover_bg))
+        .hover(move |s| s.text_color(hover_renk))
         .child(tip.label());
 
     #[cfg(target_os = "windows")]
