@@ -270,18 +270,23 @@ fn kontrol_butonu(tip: KontrolTipi, tema: &Tema) -> Stateful<Div> {
         _ => tema.kontrol_hover,
     };
     let metin_rengi = tema.ust_bar_metin;
+    let grup_adi = SharedString::from(tip.label());
 
     let base = div()
-        .id(SharedString::from(tip.label()))
+        .id(grup_adi.clone())
+        .group(grup_adi.clone())
         .flex()
         .items_center()
         .justify_center()
         .w(px(46.))
         .h_full()
-        .text_color(metin_rengi)
         .text_size(px(13.))
-        .hover(move |s| s.text_color(hover_renk))
-        .child(tip.label());
+        .child(
+            div()
+                .text_color(metin_rengi)
+                .group_hover(grup_adi, move |s| s.text_color(hover_renk))
+                .child(tip.label()),
+        );
 
     #[cfg(target_os = "windows")]
     let base = base.window_control_area(tip.window_control());
