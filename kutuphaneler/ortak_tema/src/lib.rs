@@ -244,8 +244,8 @@ impl TemaDosyasi {
                 metin: "#EDEDED".into(),
             },
             kontrol: KontrolBolumu {
-                hover: "#2A2A3E".into(),
-                kapat_hover: "#E05555".into(),
+                hover: "#B8C7FF".into(),
+                kapat_hover: "#FF7A7A".into(),
             },
             kenarlik: KenarlikBolumu {
                 renk: "#2A2A3E".into(),

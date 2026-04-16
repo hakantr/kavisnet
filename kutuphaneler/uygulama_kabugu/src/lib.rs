@@ -256,6 +256,14 @@ impl KontrolTipi {
         }
     }
 
+    fn grup_adi(&self) -> &'static str {
+        match self {
+            Self::Kucult => "kontrol-kucult",
+            Self::Buyut => "kontrol-buyut",
+            Self::Kapat => "kontrol-kapat",
+        }
+    }
+
     fn window_control(&self) -> WindowControlArea {
         match self {
             Self::Kucult => WindowControlArea::Min,
@@ -272,7 +280,7 @@ fn kontrol_butonu(tip: KontrolTipi, tema: &Tema) -> Stateful<Div> {
         _ => tema.kontrol_hover,
     };
     let metin_rengi = tema.ust_bar_metin;
-    let grup_adi = SharedString::from(tip.label());
+    let grup_adi = SharedString::from(tip.grup_adi());
 
     let base = div()
         .id(grup_adi.clone())
