@@ -9,7 +9,8 @@
       "Bash(cargo run:*)",
       "Read(//home/hakanbiris/.config/gpui_app/**)",
       "Bash(kill %1)",
-      "Bash(cargo tree:*)"
+      "Bash(cargo tree:*)",
+      "Bash(grep -E \"\\\\.rs$\")"
     ]
   }
 }

@@ -1,3 +1,4 @@
+use gpui::prelude::*;
 use gpui::*;
 use ortak_tema::Tema;
 use sol_menu::SolMenu;
@@ -22,6 +23,9 @@ impl AnaPanel {
     }
 }
 
+/// Pencere gölgesi boyutu (CSD modunda).
+const GOLGE_BOYUTU: Pixels = px(10.0);
+
 impl Render for AnaPanel {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let tema = cx.global::<Tema>();
@@ -31,6 +35,12 @@ impl Render for AnaPanel {
         if self.son_gorunum != Some(tema.pencere_gorunum) {
             window.set_background_appearance(tema.pencere_gorunum);
             self.son_gorunum = Some(tema.pencere_gorunum);
+        }
+
+        let dekorasyon = window.window_decorations();
+        match dekorasyon {
+            Decorations::Client { .. } => window.set_client_inset(GOLGE_BOYUTU),
+            Decorations::Server => window.set_client_inset(px(0.0)),
         }
 
         let icerik_satiri = div()
@@ -51,7 +61,7 @@ impl Render for AnaPanel {
             .border_color(tema.kenarlik)
             .overflow_hidden();
 
-        if tema.ust_sinir {
+        let base = if tema.ust_sinir {
             base.relative().child(icerik_satiri).child(
                 div()
                     .absolute()
@@ -62,8 +72,123 @@ impl Render for AnaPanel {
             )
         } else {
             base.child(self.ust_bar.render(tema)).child(icerik_satiri)
-        }
+        };
+
+        div()
+            .id("window-backdrop")
+            .bg(transparent_black())
+            .size_full()
+            .map(|div| match dekorasyon {
+                Decorations::Server => div,
+                Decorations::Client { tiling, .. } => {
+                    let golge = GOLGE_BOYUTU;
+                    div.child(
+                        canvas(
+                            |_bounds, window, _cx| {
+                                window.insert_hitbox(
+                                    Bounds::new(
+                                        point(px(0.0), px(0.0)),
+                                        window.window_bounds().get_bounds().size,
+                                    ),
+                                    HitboxBehavior::Normal,
+                                )
+                            },
+                            move |_bounds, hitbox, window, _cx| {
+                                let fare = window.mouse_position();
+                                let boyut = window.window_bounds().get_bounds().size;
+                                let Some(kenar) =
+                                    golge_kenar_bul(fare, golge, boyut)
+                                else {
+                                    return;
+                                };
+                                window.set_cursor_style(
+                                    match kenar {
+                                        ResizeEdge::Top | ResizeEdge::Bottom => {
+                                            CursorStyle::ResizeUpDown
+                                        }
+                                        ResizeEdge::Left | ResizeEdge::Right => {
+                                            CursorStyle::ResizeLeftRight
+                                        }
+                                        ResizeEdge::TopLeft | ResizeEdge::BottomRight => {
+                                            CursorStyle::ResizeUpLeftDownRight
+                                        }
+                                        ResizeEdge::TopRight | ResizeEdge::BottomLeft => {
+                                            CursorStyle::ResizeUpRightDownLeft
+                                        }
+                                    },
+                                    &hitbox,
+                                );
+                            },
+                        )
+                        .size_full()
+                        .absolute(),
+                    )
+                    .when(!tiling.top, |div| div.pt(golge))
+                    .when(!tiling.bottom, |div| div.pb(golge))
+                    .when(!tiling.left, |div| div.pl(golge))
+                    .when(!tiling.right, |div| div.pr(golge))
+                    .on_mouse_move(|_e, window, _cx| window.refresh())
+                    .on_mouse_down(MouseButton::Left, move |e, window, _cx| {
+                        let boyut = window.window_bounds().get_bounds().size;
+                        if let Some(kenar) = golge_kenar_bul(e.position, golge, boyut)
+                        {
+                            window.start_window_resize(kenar);
+                        }
+                    })
+                }
+            })
+            .child(
+                div()
+                    .size_full()
+                    .map(|div| match dekorasyon {
+                        Decorations::Server => div,
+                        Decorations::Client { tiling } => {
+                            div.when(!tiling.is_tiled(), |div| {
+                                div.shadow(vec![BoxShadow {
+                                    color: Hsla {
+                                        h: 0.,
+                                        s: 0.,
+                                        l: 0.,
+                                        a: 0.4,
+                                    },
+                                    blur_radius: GOLGE_BOYUTU / 2.,
+                                    spread_radius: px(0.),
+                                    offset: point(px(0.0), px(0.0)),
+                                }])
+                            })
+                        }
+                    })
+                    .on_mouse_move(|_e, _, cx| cx.stop_propagation())
+                    .child(base),
+            )
     }
+}
+
+fn golge_kenar_bul(
+    pos: Point<Pixels>,
+    golge: Pixels,
+    boyut: Size<Pixels>,
+) -> Option<ResizeEdge> {
+    let kenar = if pos.y < golge && pos.x < golge {
+        ResizeEdge::TopLeft
+    } else if pos.y < golge && pos.x > boyut.width - golge {
+        ResizeEdge::TopRight
+    } else if pos.y < golge {
+        ResizeEdge::Top
+    } else if pos.y > boyut.height - golge && pos.x < golge {
+        ResizeEdge::BottomLeft
+    } else if pos.y > boyut.height - golge && pos.x > boyut.width - golge {
+        ResizeEdge::BottomRight
+    } else if pos.y > boyut.height - golge {
+        ResizeEdge::Bottom
+    } else if pos.x < golge {
+        ResizeEdge::Left
+    } else if pos.x > boyut.width - golge {
+        ResizeEdge::Right
+    } else {
+        return None;
+    };
+    Some(kenar)
 }
 
 /// Uygulama app_id (Linux'ta pencere ↔ .desktop eslesmesi icin).
