@@ -524,11 +524,18 @@ pub fn temayi_izle(cx: &mut App) {
 
     cx.spawn(async move |cx| {
         let (tx, rx) = channel();
+        let izlenen_yol = yol.clone();
         let _watcher = notify::recommended_watcher(move |res| {
-            if let Ok(notify::Event { kind, .. }) = res {
+            if let Ok(notify::Event { kind, paths, .. }) = res {
+                let bizi_ilgilendiriyor = paths.iter().any(|p| p == &izlenen_yol);
+                if !bizi_ilgilendiriyor {
+                    return;
+                }
                 if matches!(
                     kind,
-                    notify::EventKind::Modify(_) | notify::EventKind::Create(_)
+                    notify::EventKind::Modify(_)
+                        | notify::EventKind::Create(_)
+                        | notify::EventKind::Remove(_)
                 ) {
                     let _ = tx.send(());
                 }
@@ -541,9 +548,6 @@ pub fn temayi_izle(cx: &mut App) {
             let _ = _watcher.watch(parent, RecursiveMode::NonRecursive);
         }
 
-        // Icerik onbellegi: inotify birden fazla olay gonderse de ya da baska
-        // dosya/attribute olaylari tetiklense de, gercek icerik degismediyse
-        // tema yeniden yuklenmez.
         let mut son_icerik = std::fs::read_to_string(&yol).unwrap_or_default();
 
         loop {
@@ -554,15 +558,25 @@ pub fn temayi_izle(cx: &mut App) {
 
             if olay_var {
                 Timer::after(Duration::from_millis(100)).await;
-                if let Ok(yeni_icerik) = std::fs::read_to_string(&yol) {
-                    if yeni_icerik != son_icerik {
-                        son_icerik = yeni_icerik;
-                        let yeni_yol = yol.clone();
+                match std::fs::read_to_string(&yol) {
+                    Ok(yeni_icerik) => {
+                        if yeni_icerik != son_icerik {
+                            son_icerik = yeni_icerik;
+                            let yeni_yol = yol.clone();
+                            let _ = cx.update(|cx| {
+                                if let Some(yeni_tema) = Tema::kontrol_et_ve_yukle(&yeni_yol) {
+                                    cx.set_global(yeni_tema);
+                                    println!("Tema canli olarak guncellendi.");
+                                }
+                            });
+                        }
+                    }
+                    Err(_) => {
+                        son_icerik.clear();
                         let _ = cx.update(|cx| {
-                            if let Some(yeni_tema) = Tema::kontrol_et_ve_yukle(&yeni_yol) {
-                                cx.set_global(yeni_tema);
-                                println!("Tema canli olarak guncellendi.");
-                            }
+                            let varsayilan = Tema::dosyadan_olustur(&TemaDosyasi::varsayilan());
+                            cx.set_global(varsayilan);
+                            println!("Tema dosyasi bulunamadi, varsayilan temaya donuldu.");
                         });
                     }
                 }
