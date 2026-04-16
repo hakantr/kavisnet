@@ -1,0 +1,43 @@
+# KavisNet - Claude Code Rehberi
+
+## Proje Hakkinda
+Rust + GPUI framework ile gelistirilen masaustu uygulamasi. macOS ve Linux (Ubuntu/GNOME) ortamlarinda calisiyor.
+
+## Kodlama Tercihleri
+- Turkce degisken/fonksiyon/struct isimleri kullanilir (or: `ust_bar`, `pencere_kavis`, `golge_kenar_bul`)
+- Temiz ve minimal yaklasimlar tercih edilir
+
+## Mimari Kararlar
+
+### CSD (Client Side Decoration)
+Tum platformlarda `WindowDecorations::Client` kullaniliyor. macOS'ta traffic light butonlari native kaliyor, Linux'ta kontrol butonlari uygulama tarafindan ciziliyor. SSD'ye gecis onerilmemeli.
+
+### Kontrol Butonlari (Linux)
+Hover'da zemin rengi degismiyor, sadece ikon/metin rengi degisiyor. Sebep: kavisli pencere koselerinde hover zemin rengi kavisin disina tasiyor (`overflow_hidden` GPUI'de border-radius'a klip yapmiyor). `group_hover` ile sadece `text_color` degistirilir.
+
+### Tema Sistemi
+- `TemaDosyasi` (TOML, diske yazilir) → `Tema` (runtime struct, `cx.global`)
+- Canli izleme: notify watcher, sadece Modify/Create/Remove + dosya yolu filtresi
+- Dosya silinirse varsayilan temaya donus (`TemaDosyasi::varsayilan()`)
+- `sol_panel_min_genislik`: minimum genislik (ileride resize icin sinir olacak)
+
+### Sol Panel + Calisma Yuzeyi Layout
+- Sol panel: sabit genislik (`flex_shrink_0`), min genislik temadan
+- Calisma yuzeyi: `flex_1` ile kalan alani doldurur
+- Ikisi `icerik_satiri` (flex_row) icinde yan yana
+- `ust_sinir` aktifken her ikisi de ust bar yuksekligi kadar ust padding alir
+
+## GPUI Teknik Notlar
+
+### hover text_color kaskat etmez
+GPUI'de `.hover(|s| s.text_color(...))` child text element'lere kaskat etmiyor. Parent hover'landinginda child'in text rengini degistirmek icin parent'a `.group(ad)`, child'a `.group_hover(ad, |s| s.text_color(...))` ekle.
+
+### CSD golge icin 3 adim gerekli
+`WindowDecorations::Client` tek basina golge olusturmaz:
+1. `window.set_client_inset(boyut)` — WM'ye `_GTK_FRAME_EXTENTS` bildirir
+2. Tiling durumuna gore padding (pt/pb/pl/pr)
+3. `BoxShadow` render (blur_radius = boyut/2, alpha 0.4)
+`window.window_decorations()` ile `Decorations::Client { tiling }` kontrol et, `Decorations::Server` dalinda hicbir sey yapma.
+
+### notify watcher'da olay ve dosya filtresi sart
+`notify::recommended_watcher` Access(Open) dahil tum olaylari gonderiyor. Filtresiz kullanilirsa okuma → olay → tekrar okuma kisir dongusu olusur. Event callback'inde `event.kind` (sadece Modify/Create/Remove) ve `event.paths` (sadece hedef dosya) kontrol et.

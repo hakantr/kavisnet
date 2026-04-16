@@ -29,6 +29,8 @@ const GOLGE_BOYUTU: Pixels = px(10.0);
 impl Render for AnaPanel {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let tema = cx.global::<Tema>();
+        self.sol_menu.baslangic_genisligi_ayarla(tema);
+
         // Sadece degisiklik oldugunda cagir; aksi halde Wayland'da
         // update_window → re-render → set_background_appearance sonsuz
         // dongusu olusur ve CPU kullanimi artar.
