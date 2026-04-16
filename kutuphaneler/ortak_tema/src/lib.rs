@@ -525,8 +525,13 @@ pub fn temayi_izle(cx: &mut App) {
     cx.spawn(async move |cx| {
         let (tx, rx) = channel();
         let _watcher = notify::recommended_watcher(move |res| {
-            if let Ok(_) = res {
-                let _ = tx.send(());
+            if let Ok(notify::Event { kind, .. }) = res {
+                if matches!(
+                    kind,
+                    notify::EventKind::Modify(_) | notify::EventKind::Create(_)
+                ) {
+                    let _ = tx.send(());
+                }
             }
         })
         .expect("Tema izleyici başlatılamadı");
