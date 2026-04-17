@@ -10,7 +10,13 @@
       "Read(//home/hakanbiris/.config/gpui_app/**)",
       "Bash(kill %1)",
       "Bash(cargo tree:*)",
-      "Bash(grep -E \"\\\\.rs$\")"
+      "Bash(grep -E \"\\\\.rs$\")",
+      "Bash(cargo metadata:*)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); pkgs=[p for p in d['packages'] if p['name']=='gpui']; print\\(pkgs[0]['manifest_path'] if pkgs else 'not found'\\)\")",
+      "Read(//Users/hakanbiris/github/zed/crates/gpui/**)",
+      "Read(//Users/hakanbiris/github/**)",
+      "Bash(git ls-remote *)",
+      "Bash(cargo fetch *)"
     ]
   }
 }

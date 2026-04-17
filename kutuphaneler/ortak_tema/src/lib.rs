@@ -557,7 +557,7 @@ pub fn temayi_izle(cx: &mut App) {
             }
 
             if olay_var {
-                Timer::after(Duration::from_millis(100)).await;
+                smol::Timer::after(Duration::from_millis(100)).await;
                 match std::fs::read_to_string(&yol) {
                     Ok(yeni_icerik) => {
                         if yeni_icerik != son_icerik {
@@ -581,7 +581,7 @@ pub fn temayi_izle(cx: &mut App) {
                     }
                 }
             }
-            Timer::after(Duration::from_millis(250)).await;
+            smol::Timer::after(Duration::from_millis(250)).await;
         }
     })
     .detach();

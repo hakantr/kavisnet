@@ -426,6 +426,7 @@ fn linux_kontrol_duzeni() -> KontrolDuzeni {
     kilit.duzen
 }
 
+#[allow(dead_code)]
 fn kontrol_destekleniyor_mu(tip: KontrolTipi, kontroller: WindowControls) -> bool {
     match tip {
         KontrolTipi::Kucult => kontroller.minimize,
@@ -486,6 +487,7 @@ fn kontrol_butonu(
     base
 }
 
+#[cfg_attr(target_os = "macos", allow(unused_mut, unreachable_code))]
 fn pencere_kontrolleri_taraf(
     taraf: KontrolTarafi,
     window: &Window,
@@ -599,6 +601,7 @@ impl UstBar {
             }
         })
         .on_mouse_down(MouseButton::Right, |ev, window, _cx| {
+            let _ = (&ev, &window);
             #[cfg(target_os = "linux")]
             {
                 if matches!(window.window_decorations(), Decorations::Client { .. })
