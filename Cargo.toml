@@ -26,7 +26,8 @@ edition = "2024"
 [workspace.dependencies]
 gpui = { version = "*" }
 # gpui_platform yeni Zed sürümünde ayrı crate — current_platform()/Application fabrikası burada.
-gpui_platform = { git = "https://github.com/zed-industries/zed.git", tag = "v0.232.2" }
+# Linux'ta wayland+x11 feature'ları açılmazsa gpui_linux/current_platform() unreachable!() ile panikliyor.
+gpui_platform = { git = "https://github.com/zed-industries/zed.git", tag = "v0.232.2", features = ["wayland", "x11"] }
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"
 dirs = "6"
