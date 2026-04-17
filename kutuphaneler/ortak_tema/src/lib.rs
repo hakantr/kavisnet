@@ -174,13 +174,16 @@ pub struct TemaAilesiDosyasi {
     pub ad: String,
     pub yazar: String,
     pub secim: TemaSecimi,
-    pub varyantlar: Vec<TemaVaryantDosyasi>,
+    /// Kullanici varyantlari YAMA (refinement) olarak tutulur; bos birakilan
+    /// alanlar `temel` varyanttan kalitilir. Zed `ThemeContent` +
+    /// `Refineable` akisina karsi gelir.
+    pub varyantlar: Vec<TemaVaryantYamasi>,
 }
 
-/// Zed'in `ThemeContent` esdegeri: bir varyantin tum yapisi.
-/// Bolumleme Zed `ThemeStyles` ile benzesim: pencere/yerlesim + semantik
-/// renk gruplari (`renkler` = `ThemeColors`, `durum` = `StatusColors`).
-#[derive(Deserialize, Serialize)]
+/// Zed'in `ThemeContent` esdegeri: bir varyantin tum yapisi (tum alanlar
+/// zorunlu). Yerlesik varsayilanlari ifade etmek icin kullanilir; kullanici
+/// dosyasi yerine `TemaVaryantYamasi` yaziyor.
+#[derive(Deserialize, Serialize, Clone)]
 pub struct TemaVaryantDosyasi {
     pub ad: String,
     #[serde(default)]
@@ -191,7 +194,7 @@ pub struct TemaVaryantDosyasi {
     pub durum: DurumBolumu,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct PencereBolumu {
     /// "otomatik", "seffaf", "opak"
     #[serde(rename = "mod")]
@@ -207,7 +210,7 @@ pub struct PencereBolumu {
     pub kavis: f64,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct YerlesimBolumu {
     pub ust_bar_yukseklik: f64,
     pub ust_bar_sol_bosluk: f64,
@@ -221,7 +224,7 @@ pub struct YerlesimBolumu {
 /// Alanlar Zed semantiginin Turkce karsiligi: `text` → `metin`,
 /// `element_background` → `eleman_arka_plan`, `ghost_element_hover`
 /// yerine icon-hover olarak acik semantik (`ikon_vurgu`, `ikon_kritik`).
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct RenklerBolumu {
     // Yuzeyler
     pub yuzey_arka_plan: String,
@@ -261,7 +264,7 @@ pub struct RenklerBolumu {
 
 /// Zed `StatusColors`'inin kisa versiyonu — editor-spesifik (modified,
 /// conflict, hint, vb.) alanlar uygulama kapsaminda gereksiz.
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct DurumBolumu {
     pub basari: String,
     pub uyari: String,
@@ -269,8 +272,251 @@ pub struct DurumBolumu {
     pub bilgi: String,
 }
 
+// ── Yama (Refineable) tipleri ──────────────────────────────
+
+/// Zed `Refineable` / `ThemeContent` patch modeli: her alan `Option<T>`;
+/// bos birakilanlar `temel` varyantin degerinden kalitilir.
+///
+/// `temel = None` iken kaynak, `gorunum` alanina gore secilir (koyu →
+/// "KavisNet Koyu", aydinlik → "KavisNet Aydinlik"). Boylece kullanici
+/// sadece degistirmek istedigi alanlari yazar.
+#[derive(Deserialize, Serialize, Default, Clone)]
+pub struct TemaVaryantYamasi {
+    pub ad: String,
+    /// Kalitim icin kaynak varyant adi. Yoksa `gorunum`'e gore varsayilan
+    /// kullanilir.
+    #[serde(default)]
+    pub temel: Option<String>,
+    #[serde(default)]
+    pub gorunum: Option<Gorunum>,
+    #[serde(default)]
+    pub pencere: PencereYamasi,
+    #[serde(default)]
+    pub yerlesim: YerlesimYamasi,
+    #[serde(default)]
+    pub renkler: RenklerYamasi,
+    #[serde(default)]
+    pub durum: DurumYamasi,
+}
+
+#[derive(Deserialize, Serialize, Default, Clone)]
+pub struct PencereYamasi {
+    #[serde(default, rename = "mod")]
+    pub pencere_modu: Option<PencereModu>,
+    #[serde(default)]
+    pub arka_plan: Option<String>,
+    #[serde(default)]
+    pub blur_seffaflik: Option<f64>,
+    #[serde(default)]
+    pub seffaf_seffaflik: Option<f64>,
+    #[serde(default)]
+    pub kavis: Option<f64>,
+}
+
+#[derive(Deserialize, Serialize, Default, Clone)]
+pub struct YerlesimYamasi {
+    #[serde(default)]
+    pub ust_bar_yukseklik: Option<f64>,
+    #[serde(default)]
+    pub ust_bar_sol_bosluk: Option<f64>,
+    #[serde(default)]
+    pub sol_panel_min_genislik: Option<f64>,
+    #[serde(default)]
+    pub calisma_yuzeyi_kavis: Option<f64>,
+    #[serde(default)]
+    pub calisma_yuzeyi_kavisli_mi: Option<bool>,
+    #[serde(default)]
+    pub ust_sinir: Option<bool>,
+}
+
+#[derive(Deserialize, Serialize, Default, Clone)]
+pub struct RenklerYamasi {
+    #[serde(default)]
+    pub yuzey_arka_plan: Option<String>,
+    #[serde(default)]
+    pub yuksek_yuzey_arka_plan: Option<String>,
+    #[serde(default)]
+    pub panel_arka_plan: Option<String>,
+    #[serde(default)]
+    pub baslik_cubugu_arka_plan: Option<String>,
+    #[serde(default)]
+    pub baslik_cubugu_ayirici: Option<String>,
+    #[serde(default)]
+    pub eleman_arka_plan: Option<String>,
+    #[serde(default)]
+    pub eleman_hover: Option<String>,
+    #[serde(default)]
+    pub eleman_aktif: Option<String>,
+    #[serde(default)]
+    pub eleman_metin: Option<String>,
+    #[serde(default)]
+    pub metin: Option<String>,
+    #[serde(default)]
+    pub metin_sessiz: Option<String>,
+    #[serde(default)]
+    pub metin_yer_tutucu: Option<String>,
+    #[serde(default)]
+    pub ikon: Option<String>,
+    #[serde(default)]
+    pub ikon_vurgu: Option<String>,
+    #[serde(default)]
+    pub ikon_kritik: Option<String>,
+    #[serde(default)]
+    pub kenarlik: Option<String>,
+    #[serde(default)]
+    pub kenarlik_varyant: Option<String>,
+    #[serde(default)]
+    pub vurgu: Option<String>,
+    #[serde(default)]
+    pub vurgu_hover: Option<String>,
+    #[serde(default)]
+    pub golge: Option<String>,
+    #[serde(default)]
+    pub golge_seffaflik: Option<f64>,
+}
+
+#[derive(Deserialize, Serialize, Default, Clone)]
+pub struct DurumYamasi {
+    #[serde(default)]
+    pub basari: Option<String>,
+    #[serde(default)]
+    pub uyari: Option<String>,
+    #[serde(default)]
+    pub hata: Option<String>,
+    #[serde(default)]
+    pub bilgi: Option<String>,
+}
+
+// ── Yama uygulama (refine) ────────────────────────────────
+
+impl PencereBolumu {
+    fn yama_uygula(&mut self, y: &PencereYamasi) {
+        if let Some(v) = y.pencere_modu { self.pencere_modu = v; }
+        if let Some(v) = &y.arka_plan { self.arka_plan = v.clone(); }
+        if let Some(v) = y.blur_seffaflik { self.blur_seffaflik = v; }
+        if let Some(v) = y.seffaf_seffaflik { self.seffaf_seffaflik = v; }
+        if let Some(v) = y.kavis { self.kavis = v; }
+    }
+}
+
+impl YerlesimBolumu {
+    fn yama_uygula(&mut self, y: &YerlesimYamasi) {
+        if let Some(v) = y.ust_bar_yukseklik { self.ust_bar_yukseklik = v; }
+        if let Some(v) = y.ust_bar_sol_bosluk { self.ust_bar_sol_bosluk = v; }
+        if let Some(v) = y.sol_panel_min_genislik { self.sol_panel_min_genislik = v; }
+        if let Some(v) = y.calisma_yuzeyi_kavis { self.calisma_yuzeyi_kavis = v; }
+        if let Some(v) = y.calisma_yuzeyi_kavisli_mi { self.calisma_yuzeyi_kavisli_mi = v; }
+        if let Some(v) = y.ust_sinir { self.ust_sinir = v; }
+    }
+}
+
+impl RenklerBolumu {
+    fn yama_uygula(&mut self, y: &RenklerYamasi) {
+        if let Some(v) = &y.yuzey_arka_plan { self.yuzey_arka_plan = v.clone(); }
+        if let Some(v) = &y.yuksek_yuzey_arka_plan { self.yuksek_yuzey_arka_plan = v.clone(); }
+        if let Some(v) = &y.panel_arka_plan { self.panel_arka_plan = v.clone(); }
+        if let Some(v) = &y.baslik_cubugu_arka_plan { self.baslik_cubugu_arka_plan = v.clone(); }
+        if let Some(v) = &y.baslik_cubugu_ayirici { self.baslik_cubugu_ayirici = v.clone(); }
+        if let Some(v) = &y.eleman_arka_plan { self.eleman_arka_plan = v.clone(); }
+        if let Some(v) = &y.eleman_hover { self.eleman_hover = v.clone(); }
+        if let Some(v) = &y.eleman_aktif { self.eleman_aktif = v.clone(); }
+        if let Some(v) = &y.eleman_metin { self.eleman_metin = v.clone(); }
+        if let Some(v) = &y.metin { self.metin = v.clone(); }
+        if let Some(v) = &y.metin_sessiz { self.metin_sessiz = v.clone(); }
+        if let Some(v) = &y.metin_yer_tutucu { self.metin_yer_tutucu = v.clone(); }
+        if let Some(v) = &y.ikon { self.ikon = v.clone(); }
+        if let Some(v) = &y.ikon_vurgu { self.ikon_vurgu = v.clone(); }
+        if let Some(v) = &y.ikon_kritik { self.ikon_kritik = v.clone(); }
+        if let Some(v) = &y.kenarlik { self.kenarlik = v.clone(); }
+        if let Some(v) = &y.kenarlik_varyant { self.kenarlik_varyant = v.clone(); }
+        if let Some(v) = &y.vurgu { self.vurgu = v.clone(); }
+        if let Some(v) = &y.vurgu_hover { self.vurgu_hover = v.clone(); }
+        if let Some(v) = &y.golge { self.golge = v.clone(); }
+        if let Some(v) = y.golge_seffaflik { self.golge_seffaflik = v; }
+    }
+}
+
+impl DurumBolumu {
+    fn yama_uygula(&mut self, y: &DurumYamasi) {
+        if let Some(v) = &y.basari { self.basari = v.clone(); }
+        if let Some(v) = &y.uyari { self.uyari = v.clone(); }
+        if let Some(v) = &y.hata { self.hata = v.clone(); }
+        if let Some(v) = &y.bilgi { self.bilgi = v.clone(); }
+    }
+}
+
+impl TemaVaryantDosyasi {
+    /// Yama alanlarindan dolu olanlari bu dosyanin uzerine yazar.
+    /// `ad` her zaman yamanin adiyla degisir (varyant kimligi yamaya ait).
+    fn yama_uygula(&mut self, y: &TemaVaryantYamasi) {
+        self.ad = y.ad.clone();
+        if let Some(g) = y.gorunum { self.gorunum = g; }
+        self.pencere.yama_uygula(&y.pencere);
+        self.yerlesim.yama_uygula(&y.yerlesim);
+        self.renkler.yama_uygula(&y.renkler);
+        self.durum.yama_uygula(&y.durum);
+    }
+}
+
+impl TemaVaryantYamasi {
+    /// Bir `TemaVaryantDosyasi`'ni tam dolu bir yamaya cevirir — dosya
+    /// yazilirken (varsayilan ailesi) tum alanlarin gorunmesi icin.
+    fn tamamen_dolu(d: &TemaVaryantDosyasi) -> Self {
+        Self {
+            ad: d.ad.clone(),
+            temel: None,
+            gorunum: Some(d.gorunum),
+            pencere: PencereYamasi {
+                pencere_modu: Some(d.pencere.pencere_modu),
+                arka_plan: Some(d.pencere.arka_plan.clone()),
+                blur_seffaflik: Some(d.pencere.blur_seffaflik),
+                seffaf_seffaflik: Some(d.pencere.seffaf_seffaflik),
+                kavis: Some(d.pencere.kavis),
+            },
+            yerlesim: YerlesimYamasi {
+                ust_bar_yukseklik: Some(d.yerlesim.ust_bar_yukseklik),
+                ust_bar_sol_bosluk: Some(d.yerlesim.ust_bar_sol_bosluk),
+                sol_panel_min_genislik: Some(d.yerlesim.sol_panel_min_genislik),
+                calisma_yuzeyi_kavis: Some(d.yerlesim.calisma_yuzeyi_kavis),
+                calisma_yuzeyi_kavisli_mi: Some(d.yerlesim.calisma_yuzeyi_kavisli_mi),
+                ust_sinir: Some(d.yerlesim.ust_sinir),
+            },
+            renkler: RenklerYamasi {
+                yuzey_arka_plan: Some(d.renkler.yuzey_arka_plan.clone()),
+                yuksek_yuzey_arka_plan: Some(d.renkler.yuksek_yuzey_arka_plan.clone()),
+                panel_arka_plan: Some(d.renkler.panel_arka_plan.clone()),
+                baslik_cubugu_arka_plan: Some(d.renkler.baslik_cubugu_arka_plan.clone()),
+                baslik_cubugu_ayirici: Some(d.renkler.baslik_cubugu_ayirici.clone()),
+                eleman_arka_plan: Some(d.renkler.eleman_arka_plan.clone()),
+                eleman_hover: Some(d.renkler.eleman_hover.clone()),
+                eleman_aktif: Some(d.renkler.eleman_aktif.clone()),
+                eleman_metin: Some(d.renkler.eleman_metin.clone()),
+                metin: Some(d.renkler.metin.clone()),
+                metin_sessiz: Some(d.renkler.metin_sessiz.clone()),
+                metin_yer_tutucu: Some(d.renkler.metin_yer_tutucu.clone()),
+                ikon: Some(d.renkler.ikon.clone()),
+                ikon_vurgu: Some(d.renkler.ikon_vurgu.clone()),
+                ikon_kritik: Some(d.renkler.ikon_kritik.clone()),
+                kenarlik: Some(d.renkler.kenarlik.clone()),
+                kenarlik_varyant: Some(d.renkler.kenarlik_varyant.clone()),
+                vurgu: Some(d.renkler.vurgu.clone()),
+                vurgu_hover: Some(d.renkler.vurgu_hover.clone()),
+                golge: Some(d.renkler.golge.clone()),
+                golge_seffaflik: Some(d.renkler.golge_seffaflik),
+            },
+            durum: DurumYamasi {
+                basari: Some(d.durum.basari.clone()),
+                uyari: Some(d.durum.uyari.clone()),
+                hata: Some(d.durum.hata.clone()),
+                bilgi: Some(d.durum.bilgi.clone()),
+            },
+        }
+    }
+}
+
 impl TemaAilesiDosyasi {
-    /// Varsayilan tema ailesi: "KavisNet Koyu" + "KavisNet Aydinlik".
+    /// Varsayilan tema ailesi: "KavisNet Koyu" + "KavisNet Aydinlik" tam
+    /// yapilandirmali yamalar olarak. Kullanici silerek kalitima donebilir.
     pub fn varsayilan() -> Self {
         Self {
             ad: "KavisNet".into(),
@@ -280,8 +526,8 @@ impl TemaAilesiDosyasi {
                 koyu: "KavisNet Koyu".into(),
             },
             varyantlar: vec![
-                TemaVaryantDosyasi::varsayilan_koyu(),
-                TemaVaryantDosyasi::varsayilan_aydinlik(),
+                TemaVaryantYamasi::tamamen_dolu(&TemaVaryantDosyasi::varsayilan_koyu()),
+                TemaVaryantYamasi::tamamen_dolu(&TemaVaryantDosyasi::varsayilan_aydinlik()),
             ],
         }
     }
@@ -652,13 +898,54 @@ fn yukleme_bileseni(sistem: Gorunum) -> (TemaKaydi, Tema) {
     let yol = tema_dosya_yolu();
     let aile = aileyi_yukle_veya_yaz(&yol);
 
-    let mut kayit = TemaKaydi::varsayilan_ile();
-    for v in &aile.varyantlar {
-        kayit.kaydet(Tema::varyanttan_olustur(v));
-    }
-
+    let kayit = yamalardan_kayit_olustur(&aile.varyantlar);
     let aktif = secim_ile_aktif_tema(&aile.secim, sistem, &kayit);
     (kayit, aktif)
+}
+
+/// Yerlesik varsayilanlarla baslayip sirayla her yamayi uygun temel
+/// uzerine birlestirir (Zed `Refineable::refine` akisi). Onceki yamalar
+/// sonraki yamalara `temel` olabilir — zincirleme kalitim desteklenir.
+fn yamalardan_kayit_olustur(yamalar: &[TemaVaryantYamasi]) -> TemaKaydi {
+    let mut kayit = TemaKaydi::varsayilan_ile();
+    let mut cozulen: Vec<TemaVaryantDosyasi> = vec![
+        TemaVaryantDosyasi::varsayilan_koyu(),
+        TemaVaryantDosyasi::varsayilan_aydinlik(),
+    ];
+
+    for yama in yamalar {
+        let temel_adi = yama
+            .temel
+            .clone()
+            .unwrap_or_else(|| match yama.gorunum.unwrap_or_default() {
+                Gorunum::Koyu => "KavisNet Koyu".into(),
+                Gorunum::Aydinlik => "KavisNet Aydinlik".into(),
+            });
+
+        let mut dosya = cozulen
+            .iter()
+            .find(|d| d.ad == temel_adi)
+            .cloned()
+            .unwrap_or_else(|| {
+                hatayi_kaydet(&format!(
+                    "'{}' yamasinin temeli '{}' bulunamadi; 'KavisNet Koyu' kullaniliyor.",
+                    yama.ad, temel_adi
+                ));
+                TemaVaryantDosyasi::varsayilan_koyu()
+            });
+
+        dosya.yama_uygula(yama);
+
+        kayit.kaydet(Tema::varyanttan_olustur(&dosya));
+
+        if let Some(yer) = cozulen.iter().position(|d| d.ad == dosya.ad) {
+            cozulen[yer] = dosya;
+        } else {
+            cozulen.push(dosya);
+        }
+    }
+
+    kayit
 }
 
 fn aileyi_yukle_veya_yaz(yol: &Path) -> TemaAilesiDosyasi {
@@ -701,6 +988,22 @@ fn aileyi_yukle_veya_yaz(yol: &Path) -> TemaAilesiDosyasi {
 #   mod = \"sistem\"           # sistemin koyu/aydinlik tercihini izle
 #   aydinlik = \"KavisNet Aydinlik\"
 #   koyu = \"KavisNet Koyu\"
+#
+# YAMA (Refinement) destegi:
+#   Her varyant bir YAMADIR — istemedigin alanlari silerek `temel`
+#   varyanttan kalitabilirsin. Minimal ornek:
+#
+#     [[varyantlar]]
+#     ad = \"Mavi Gece\"
+#     temel = \"KavisNet Koyu\"    # (ops.) kaynak varyant; yoksa gorunum
+#                                  #        alanina gore otomatik secilir
+#     gorunum = \"koyu\"
+#
+#     [varyantlar.renkler]
+#     vurgu = \"#4A90E2\"          # sadece degistirmek istedigin alan
+#
+#   Asagidaki iki yerlesik varyant tam yapilandirma ile yazildi; ancak
+#   istedigin alanlari silerek varsayilana donebilirsin.
 #
 # Renk kategorileri (Zed ThemeColors/StatusColors tabanli):
 #   [varyantlar.renkler] — UI widget, yuzey, metin, ikon, kenarlik, vurgu
@@ -798,11 +1101,8 @@ pub fn temayi_izle(cx: &mut App) {
                         son_icerik.clear();
                         let _ = cx.update(|cx| {
                             let sistem = SistemGorunumu::global(cx).0;
-                            let mut kayit = TemaKaydi::varsayilan_ile();
                             let aile = TemaAilesiDosyasi::varsayilan();
-                            for v in &aile.varyantlar {
-                                kayit.kaydet(Tema::varyanttan_olustur(v));
-                            }
+                            let kayit = yamalardan_kayit_olustur(&aile.varyantlar);
                             let aktif = secim_ile_aktif_tema(&aile.secim, sistem, &kayit);
                             cx.set_global(kayit);
                             cx.set_global(aktif);
