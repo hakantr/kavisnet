@@ -1,5 +1,5 @@
 use gpui::*;
-use ortak_tema::Tema;
+use ortak_tema::{AktifTema, Tema};
 
 use crate::ana_panel::AnaPanel;
 
@@ -33,7 +33,9 @@ pub fn pencere_secenekleri(tema: &Tema) -> WindowOptions {
 
 /// Uygulamanın ana penceresini açar ve kapatma handler'ını kurar.
 pub fn ana_pencere_ac(cx: &mut App) {
-    let tema = *cx.global::<Tema>();
+    // `Tema` artik `SharedString` iceriyor; Copy degil. async block'a tasimak
+    // icin klonluyoruz (Arc-backed alanlar sayesinde ucuz).
+    let tema = cx.tema().clone();
 
     #[cfg(target_os = "linux")]
     crate::linux_ikon::linux_ikon_kur();

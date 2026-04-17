@@ -1,6 +1,6 @@
 use gpui::prelude::*;
 use gpui::*;
-use ortak_tema::Tema;
+use ortak_tema::{AktifTema, Tema};
 
 use crate::kontroller::{pencere_kontrolleri_taraf, KontrolTarafi};
 
@@ -25,9 +25,9 @@ impl UstBar {
 
 impl Render for UstBar {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let tema = *cx.global::<Tema>();
-        let sol_kontroller = pencere_kontrolleri_taraf(KontrolTarafi::Sol, window, &tema);
-        let sag_kontroller = pencere_kontrolleri_taraf(KontrolTarafi::Sag, window, &tema);
+        let tema = cx.tema();
+        let sol_kontroller = pencere_kontrolleri_taraf(KontrolTarafi::Sol, window, tema);
+        let sag_kontroller = pencere_kontrolleri_taraf(KontrolTarafi::Sag, window, tema);
 
         let mut kok = div()
             .id("ust-bar")

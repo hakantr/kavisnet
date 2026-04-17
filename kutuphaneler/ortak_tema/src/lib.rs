@@ -88,6 +88,19 @@ fn hex_renk(hex: &str) -> Hsla {
     hsla(h, s, l, a)
 }
 
+// ── Gorunum (Zed `Appearance` esdegeri) ────────────────────
+
+/// Temanin aydinlik/koyu yonu. Zed'in `Appearance` enum'u ile eslestiriliyor;
+/// ileride sistem tema algilama (mac `NSAppearance`, Linux `color-scheme`) ve
+/// otomatik varyant secimi icin referans noktasi.
+#[derive(Deserialize, Serialize, Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum Gorunum {
+    #[default]
+    Koyu,
+    Aydinlik,
+}
+
 // ── Pencere modu ───────────────────────────────────────────
 
 /// Pencere arka plan modu.
@@ -105,8 +118,26 @@ pub enum PencereModu {
 
 // ── TOML dosya yapisi ──────────────────────────────────────
 
+/// Bir tema ailesinin TOML temsili. Zed'in `ThemeFamilyContent` + `ThemeRegistry`
+/// ikilisiyle ayni rolu tasir: tek dosyada birden cok varyant, aktif varyant
+/// ismen secilir.
 #[derive(Deserialize, Serialize)]
-pub struct TemaDosyasi {
+pub struct TemaAilesiDosyasi {
+    pub ad: String,
+    pub yazar: String,
+    /// `varyantlar` icinden ismen secilen aktif varyantin adi. Bulunamazsa
+    /// ilk varyant kullanilir.
+    pub aktif_varyant: String,
+    pub varyantlar: Vec<TemaVaryantDosyasi>,
+}
+
+/// Tek bir tema varyantinin TOML temsili (eski `TemaDosyasi`). Zed'in
+/// `ThemeContent` esdegeri; aile icinde birden cok tanesi bulunur.
+#[derive(Deserialize, Serialize)]
+pub struct TemaVaryantDosyasi {
+    pub ad: String,
+    #[serde(default)]
+    pub gorunum: Gorunum,
     pub pencere: PencereBolumu,
     pub yerlesim: YerlesimBolumu,
     pub ust_bar: UstBarBolumu,
@@ -208,10 +239,38 @@ pub struct GolgeBolumu {
     pub seffaflik: f64,
 }
 
-impl TemaDosyasi {
-    /// Varsayilan tema degerlerini olusturur.
+impl TemaAilesiDosyasi {
+    /// Varsayilan tema ailesini olusturur: "KavisNet Koyu" + "KavisNet Aydinlik".
+    /// Aktif varyant varsayilan olarak "KavisNet Koyu".
     pub fn varsayilan() -> Self {
         Self {
+            ad: "KavisNet".into(),
+            yazar: "KavisNet".into(),
+            aktif_varyant: "KavisNet Koyu".into(),
+            varyantlar: vec![
+                TemaVaryantDosyasi::varsayilan_koyu(),
+                TemaVaryantDosyasi::varsayilan_aydinlik(),
+            ],
+        }
+    }
+
+    /// `aktif_varyant` adina karsilik gelen varyanti dondurur; bulunamazsa
+    /// listedeki ilk varyanti dondurur. Liste bos olamaz (varsayilan ikisini
+    /// icerir), ama savunmaci kalmak icin `Option` ile doner.
+    pub fn aktif_varyanti_sec(&self) -> Option<&TemaVaryantDosyasi> {
+        self.varyantlar
+            .iter()
+            .find(|v| v.ad == self.aktif_varyant)
+            .or_else(|| self.varyantlar.first())
+    }
+}
+
+impl TemaVaryantDosyasi {
+    /// Varsayilan koyu varyant (onceki `TemaDosyasi::varsayilan`).
+    pub fn varsayilan_koyu() -> Self {
+        Self {
+            ad: "KavisNet Koyu".into(),
+            gorunum: Gorunum::Koyu,
             pencere: PencereBolumu {
                 pencere_modu: PencereModu::Otomatik,
                 arka_plan: "#1A1A2E".into(),
@@ -273,6 +332,75 @@ impl TemaDosyasi {
             },
         }
     }
+
+    /// Varsayilan aydinlik varyant. Koyunun tamamlayicisi; ayni semantik
+    /// alanlarin tamami dolu olacak sekilde tutuluyor ki ileride kullanici
+    /// degistirse de tutarli kalsin.
+    pub fn varsayilan_aydinlik() -> Self {
+        Self {
+            ad: "KavisNet Aydinlik".into(),
+            gorunum: Gorunum::Aydinlik,
+            pencere: PencereBolumu {
+                pencere_modu: PencereModu::Otomatik,
+                arka_plan: "#F5F5FA".into(),
+                blur_seffaflik: 0.55,
+                seffaf_seffaflik: 0.85,
+                kavis: 10.0,
+            },
+            yerlesim: YerlesimBolumu {
+                sol_panel_min_genislik: 220.0,
+                calisma_yuzeyi_kavis: 10.0,
+                calisma_yuzeyi_kavisli_mi: true,
+                ust_sinir: true,
+            },
+            ust_bar: UstBarBolumu {
+                yukseklik: 40.0,
+                sol_bosluk: varsayilan_ust_bar_sol_bosluk(),
+                arka_plan: "#ECECF5".into(),
+                metin: "#1A1A2E".into(),
+                ayirici: "#D0D0DD".into(),
+            },
+            metin: MetinBolumu {
+                birincil: "#1A1A2E".into(),
+                ikincil: "#4A4A5E".into(),
+                soluk: "#8A8A9E".into(),
+            },
+            buton: ButonBolumu {
+                arka_plan: "#DDDDEE".into(),
+                hover: "#CCCCDD".into(),
+                aktif: "#BBBBCC".into(),
+                metin: "#1A1A2E".into(),
+            },
+            kontrol: KontrolBolumu {
+                hover: "#3355BB".into(),
+                kapat_hover: "#DD3333".into(),
+            },
+            kenarlik: KenarlikBolumu {
+                renk: "#D0D0DD".into(),
+                ayirici: "#E0E0EE".into(),
+            },
+            vurgu: VurguBolumu {
+                renk: "#3377CC".into(),
+                hover: "#2266BB".into(),
+                metin: "#FFFFFF".into(),
+            },
+            yuzey: YuzeyBolumu {
+                katman_1: "#FFFFFF".into(),
+                katman_2: "#F8F8FC".into(),
+                katman_3: "#F0F0F5".into(),
+            },
+            durum: DurumBolumu {
+                basari: "#33AA55".into(),
+                uyari: "#CC8800".into(),
+                hata: "#CC3333".into(),
+                bilgi: "#3377CC".into(),
+            },
+            golge: GolgeBolumu {
+                renk: "#000000".into(),
+                seffaflik: 0.20,
+            },
+        }
+    }
 }
 
 // ── Tema dosya yolu ────────────────────────────────────────
@@ -292,8 +420,16 @@ pub fn tema_dosya_yolu() -> PathBuf {
 
 /// Tum uygulama renklerini tek bir yerden yoneten tema yapisi.
 /// TOML dosyasindan yuklenir, pencere modu otomatik cozumlenir.
-#[derive(Clone, Copy)]
+///
+/// Zed'in `Theme` yapisi `Arc` sarmaliyken bizim `Tema` dogrudan `Global`
+/// olarak `cx` icinde tutuluyor; `SharedString` iceren yeni alanlar yuzunden
+/// `Copy` degil yalnizca `Clone`.
+#[derive(Clone)]
 pub struct Tema {
+    // ── Kimlik ──
+    pub ad: SharedString,
+    pub gorunum: Gorunum,
+
     // ── Pencere (sadece burasi blur/seffaf) ──
     pub pencere_gorunum: WindowBackgroundAppearance,
     pub pencere_arka_plan: Hsla,
@@ -352,31 +488,32 @@ pub struct Tema {
 }
 
 impl Tema {
-    /// TOML dosyasindan tema yukler.
-    /// Dosya yoksa varsayilan tema olusturulur ve diske yazilir.
-    /// Dosya okunamazsa varsayilan degerler kullanilir.
+    /// TOML dosyasindan tema ailesini yukler ve aktif varyanti dondurur.
+    /// Dosya yoksa varsayilan aile olusturulup diske yazilir.
+    /// Dosya okunamaz/ayristirilamazsa varsayilan aile bellekte kullanilir
+    /// (mevcut dosya uzerine yazilmaz, kullanici verisi korunur).
     pub fn yukle() -> Self {
         let yol = tema_dosya_yolu();
-        let dosya = if yol.exists() {
+        let aile = if yol.exists() {
             match std::fs::read_to_string(&yol) {
-                Ok(icerik) => match toml::from_str::<TemaDosyasi>(&icerik) {
-                    Ok(d) => d,
+                Ok(icerik) => match toml::from_str::<TemaAilesiDosyasi>(&icerik) {
+                    Ok(a) => a,
                     Err(e) => {
                         let hata_mesaji = format!("Tema dosyasi ayristirilamadi: {e}");
                         eprintln!("{hata_mesaji}");
                         hatayi_kaydet(&hata_mesaji);
-                        TemaDosyasi::varsayilan()
+                        TemaAilesiDosyasi::varsayilan()
                     }
                 },
                 Err(e) => {
                     let hata_mesaji = format!("Tema dosyasi okunamadi: {e}");
                     eprintln!("{hata_mesaji}");
                     hatayi_kaydet(&hata_mesaji);
-                    TemaDosyasi::varsayilan()
+                    TemaAilesiDosyasi::varsayilan()
                 }
             }
         } else {
-            let varsayilan = TemaDosyasi::varsayilan();
+            let varsayilan = TemaAilesiDosyasi::varsayilan();
             if let Some(dizin) = yol.parent() {
                 let _ = std::fs::create_dir_all(dizin);
             }
@@ -385,10 +522,17 @@ impl Tema {
                     let baslik = "\
 # KavisNet Tema Dosyasi
 #
+# Bu dosya bir tema AILESIDIR: birden cok varyant (koyu/aydinlik) icerir.
+# Aktif varyanti `aktif_varyant` alanindan (varyant `ad`iyla esitlenecek)
+# secebilirsin.
+#
 # Pencere modu:
 #   \"otomatik\" - Sistem blur destekliyorsa blur, yoksa seffaf
 #   \"seffaf\"   - Her zaman seffaf (blur yok)
 #   \"opak\"     - Her zaman opak
+#
+# Gorunum: \"koyu\" veya \"aydinlik\" (ileride sistem temasina gore otomatik
+#          secim icin referans olarak kullanilir)
 #
 # Renkler: \"#RRGGBB\" veya \"#RRGGBBAA\" (alfa ile)
 # Seffaflik: 0.0 (gorunmez) - 1.0 (opak)
@@ -398,23 +542,24 @@ impl Tema {
 
 ";
                     let _ = std::fs::write(&yol, format!("{baslik}{icerik}"));
-                    eprintln!("Varsayilan tema olusturuldu: {}", yol.display());
+                    eprintln!("Varsayilan tema ailesi olusturuldu: {}", yol.display());
                 }
                 Err(e) => eprintln!("Tema dosyasi yazilamadi: {e}"),
             }
             varsayilan
         };
 
-        Self::dosyadan_olustur(&dosya)
+        Self::aileden_olustur(&aile)
     }
 
-    /// Yeni bir tema dosyasini kontrol eder ve gecerliyse dondurur.
+    /// Dosyayi okur, ayristirir, aktif varyanti secer. Canli guncelleme
+    /// sirasinda cagrilir; herhangi bir hatada `None` doner.
     pub fn kontrol_et_ve_yukle(yol: &Path) -> Option<Self> {
         match std::fs::read_to_string(yol) {
-            Ok(icerik) => match toml::from_str::<TemaDosyasi>(&icerik) {
-                Ok(d) => {
+            Ok(icerik) => match toml::from_str::<TemaAilesiDosyasi>(&icerik) {
+                Ok(a) => {
                     println!("Tema dosyasi gecerli, uygulaniyor...");
-                    Some(Self::dosyadan_olustur(&d))
+                    Some(Self::aileden_olustur(&a))
                 }
                 Err(e) => {
                     hatayi_kaydet(&format!("Canli guncelleme hatasi (ayristirma): {e}"));
@@ -428,8 +573,23 @@ impl Tema {
         }
     }
 
-    /// TemaDosyasi'ndan calisma zamani Tema'yi olusturur.
-    fn dosyadan_olustur(d: &TemaDosyasi) -> Self {
+    /// Tema ailesinden aktif varyanti secip calisma zamani `Tema`'sina
+    /// cevirir. Varyant bulunamazsa ilk varyanta duser.
+    fn aileden_olustur(aile: &TemaAilesiDosyasi) -> Self {
+        // `varsayilan()` en az iki varyant uretir; kullanici dosyasinda liste
+        // bos ise bu ihtimali karsilamak icin en son carede `varsayilan_koyu`
+        // kullanilir.
+        match aile.aktif_varyanti_sec() {
+            Some(v) => Self::varyanttan_olustur(v),
+            None => {
+                hatayi_kaydet("Tema ailesinde hic varyant yok, varsayilan koyu kullaniliyor.");
+                Self::varyanttan_olustur(&TemaVaryantDosyasi::varsayilan_koyu())
+            }
+        }
+    }
+
+    /// Tek bir varyanttan calisma zamani `Tema`'sini olusturur.
+    fn varyanttan_olustur(d: &TemaVaryantDosyasi) -> Self {
         // ust_sinir = false iken pencere geleneksel/klasik gorunum alir:
         // seffaflik/blur devre disi, kose kavisi 0.
         let pencere_gorunum = if !d.yerlesim.ust_sinir {
@@ -464,6 +624,9 @@ impl Tema {
         golge.a = d.golge.seffaflik as f32;
 
         Self {
+            ad: SharedString::from(d.ad.clone()),
+            gorunum: d.gorunum,
+
             pencere_gorunum,
             pencere_arka_plan: pencere_bg,
             pencere_kavis,
@@ -513,6 +676,20 @@ impl Tema {
 }
 
 impl Global for Tema {}
+
+// ── AktifTema (Zed `ActiveTheme` esdegeri) ──────────────────
+
+/// `cx.tema()` cagrisi icin ergonomik trait. Zed'in `ActiveTheme` pattern'i
+/// ile ayni: `App`/`Context` deref zinciri uzerinden global tema referansi.
+pub trait AktifTema {
+    fn tema(&self) -> &Tema;
+}
+
+impl AktifTema for App {
+    fn tema(&self) -> &Tema {
+        self.global::<Tema>()
+    }
+}
 
 /// Tema dosyasini arka planda izler ve degisiklik oldugunda otomatik gunceller.
 pub fn temayi_izle(cx: &mut App) {
@@ -574,7 +751,8 @@ pub fn temayi_izle(cx: &mut App) {
                     Err(_) => {
                         son_icerik.clear();
                         let _ = cx.update(|cx| {
-                            let varsayilan = Tema::dosyadan_olustur(&TemaDosyasi::varsayilan());
+                            let varsayilan =
+                                Tema::aileden_olustur(&TemaAilesiDosyasi::varsayilan());
                             cx.set_global(varsayilan);
                             println!("Tema dosyasi bulunamadi, varsayilan temaya donuldu.");
                         });

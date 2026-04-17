@@ -1,6 +1,6 @@
 use gpui::prelude::*;
 use gpui::*;
-use ortak_tema::Tema;
+use ortak_tema::{AktifTema, Tema};
 use sol_menu::SolMenu;
 
 use crate::csd_golge::{golge_kenar_bul, GOLGE_BOYUTU};
@@ -47,8 +47,8 @@ impl Focusable for AnaPanel {
 
 impl Render for AnaPanel {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let tema = *cx.global::<Tema>();
-        self.sol_menu.baslangic_genisligi_ayarla(&tema);
+        let tema = cx.tema();
+        self.sol_menu.baslangic_genisligi_ayarla(tema);
 
         // Wayland'da her render'da set_background_appearance çağrısı
         // update_window → re-render → set_background_appearance sonsuz
@@ -69,8 +69,8 @@ impl Render for AnaPanel {
             .flex()
             .flex_row()
             .overflow_hidden()
-            .child(self.sol_menu.render(&tema))
-            .child(self.calisma_yuzeyi.render(&tema));
+            .child(self.sol_menu.render(tema))
+            .child(self.calisma_yuzeyi.render(tema));
 
         let base = div()
             .size_full()
