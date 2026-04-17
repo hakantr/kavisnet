@@ -48,12 +48,16 @@ impl Render for UstBar {
         kok.on_mouse_down(
             MouseButton::Left,
             cx.listener(|this, ev: &MouseDownEvent, window, _cx| {
+                let _ = window;
                 if ev.click_count == 2 {
                     #[cfg(target_os = "macos")]
                     window.titlebar_double_click();
-                    #[cfg(not(target_os = "macos"))]
+                    #[cfg(target_os = "linux")]
                     window.zoom_window();
-                    let _ = window;
+                    // Windows'ta WM_NCLBUTTONDBLCLK DefWindowProcW tarafindan
+                    // dogal olarak SC_MAXIMIZE/SC_RESTORE toggle edildiginden
+                    // buradan zoom_window() cagirirsak iki kez maximize/restore
+                    // olup stuck kalabiliyor. OS'a birakiyoruz.
                 } else {
                     this.should_move = true;
                 }
@@ -98,13 +102,7 @@ impl Render for UstBar {
                 .flex_row()
                 .items_center()
                 .h_full()
-                .flex_1()
-                .child(
-                    div()
-                        .text_color(tema.renkler.metin)
-                        .text_size(px(14.))
-                        .child("Merhaba Dünya!"),
-                ),
+                .flex_1(),
         )
         .child(sag_kontroller)
     }

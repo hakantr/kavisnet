@@ -147,8 +147,16 @@ fn kontrol_butonu(
         .on_mouse_move(|_, _, cx| cx.stop_propagation())
         .child(ikon);
 
+    // Windows: `.occlude()` sart — parent ust_bar `WindowControlArea::Drag`
+    // hitbox'i cocuk butonu ortecegi icin NCHITTEST yanlis geri doner
+    // (HTCAPTION). `.occlude()` child hitbox'i `BlockMouse` yapip
+    // `Window::hit_test` ters iterasyonda parent'tan once kesiyor; sonucta
+    // cursor buton uzerindeyken sadece `HTMINBUTTON/HTMAXBUTTON/HTCLOSE`
+    // donuyor ve Windows native buton davranisi (hover + click) calisiyor.
     #[cfg(target_os = "windows")]
-    let base = base.window_control_area(tip.window_control());
+    let base = base
+        .occlude()
+        .window_control_area(tip.window_control());
 
     // Zed `platform_title_bar::platforms::platform_linux::WindowControl` ile
     // birebir aynı davranış: mouse_down'a dokunulmaz (prevent_default
