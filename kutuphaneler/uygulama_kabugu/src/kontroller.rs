@@ -26,7 +26,11 @@ impl KontrolTipi {
     pub fn simge(&self, pencere_buyuk_mu: bool) -> &'static str {
         match self {
             Self::Kucult => "\u{2013}",
-            Self::Buyut if pencere_buyuk_mu => "\u{2750}",
+            // \u{29C9} (TWO JOINED SQUARES) matematik sembol bloğunda; Noto/DejaVu
+            // başta çoğu Linux fontunda mevcut. Önceden kullanılan \u{2750}
+            // (UPPER-RIGHT DROP-SHADOWED WHITE SQUARE) bazı Linux fontlarında
+            // eksik glyph olarak çıkıyordu.
+            Self::Buyut if pencere_buyuk_mu => "\u{29C9}",
             Self::Buyut => "\u{25A1}",
             Self::Kapat => "\u{2715}",
         }
@@ -83,13 +87,25 @@ fn kontrol_butonu(
     tema: &Tema,
     pencere_buyuk_mu: bool,
 ) -> Stateful<Div> {
-    let hover_renk = match tip {
+    let ikon_hover = match tip {
         KontrolTipi::Kapat => tema.kontrol_kapat_hover,
         _ => tema.kontrol_hover,
+    };
+    // Zemin hover için aynı vurgu rengini düşük alpha ile kullan: kavisli
+    // pencere köşelerinde daire buton boyutundan (20px) küçük kaldığı için
+    // border-radius dışına taşmaz. Zed'in ghost_element_hover eşdeğeri.
+    #[cfg(target_os = "linux")]
+    let zemin_hover = {
+        let mut renk = ikon_hover;
+        renk.a = 0.18;
+        renk
     };
     let metin_rengi = tema.ust_bar_metin;
     let grup_adi = SharedString::from(tip.grup_adi());
 
+    // Windows/eski yerleşim: geniş dikdörtgen buton (46px) — native stil.
+    // Linux: Zed'in `platform_linux::WindowControl` pattern'i — 20x20 daire.
+    #[cfg(not(target_os = "linux"))]
     let base = div()
         .id(grup_adi.clone())
         .group(grup_adi.clone())
@@ -103,7 +119,32 @@ fn kontrol_butonu(
         .child(
             div()
                 .text_color(metin_rengi)
-                .group_hover(grup_adi, move |s| s.text_color(hover_renk))
+                .group_hover(grup_adi, move |s| s.text_color(ikon_hover))
+                .child(tip.simge(pencere_buyuk_mu)),
+        );
+
+    // Zed `WindowControl::render` ile birebir: `.group("")` + container
+    // `.hover(|s| s.bg(bg_hover))` + child `.group_hover("", …)` ikon rengi.
+    // 20x20 rounded_full daire, buton etrafındaki kavise taşmadan hover zemini
+    // gösterir.
+    #[cfg(target_os = "linux")]
+    let base = div()
+        .id(grup_adi.clone())
+        .group(grup_adi.clone())
+        .flex()
+        .items_center()
+        .justify_center()
+        .w_5()
+        .h_5()
+        .rounded_full()
+        .cursor_pointer()
+        .text_size(px(12.))
+        .hover(move |s| s.bg(zemin_hover))
+        .on_mouse_move(|_, _, cx| cx.stop_propagation())
+        .child(
+            div()
+                .text_color(metin_rengi)
+                .group_hover(grup_adi, move |s| s.text_color(ikon_hover))
                 .child(tip.simge(pencere_buyuk_mu)),
         );
 
@@ -200,10 +241,13 @@ pub fn pencere_kontrolleri_taraf(
         }
 
         // Zed `LinuxWindowControls` ile aynı: butonlu container'da sol-tık
-        // event'ini üst bar'a geçirme (drag tetiklenmesin).
+        // event'ini üst bar'a geçirme (drag tetiklenmesin) + gap_3 px_3 ile
+        // 20x20 daireleri yan yana dizme.
         if buton_sayisi > 0 {
-            satir =
-                satir.on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation());
+            satir = satir
+                .gap_3()
+                .px_3()
+                .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation());
         }
     }
 
