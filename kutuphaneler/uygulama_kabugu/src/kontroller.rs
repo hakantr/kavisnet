@@ -88,8 +88,8 @@ fn kontrol_butonu(
     pencere_buyuk_mu: bool,
 ) -> Stateful<Div> {
     let ikon_hover = match tip {
-        KontrolTipi::Kapat => tema.kontrol_kapat_hover,
-        _ => tema.kontrol_hover,
+        KontrolTipi::Kapat => tema.renkler.ikon_kritik,
+        _ => tema.renkler.ikon_vurgu,
     };
     // Zemin hover için aynı vurgu rengini düşük alpha ile kullan: kavisli
     // pencere köşelerinde daire buton boyutundan (20px) küçük kaldığı için
@@ -100,7 +100,7 @@ fn kontrol_butonu(
         renk.a = 0.18;
         renk
     };
-    let metin_rengi = tema.ust_bar_metin;
+    let metin_rengi = tema.renkler.ikon;
     let grup_adi = SharedString::from(tip.grup_adi());
 
     // Zed `IconName::Generic*` ile aynı: 16x16 viewBox'lı SVG, size_4() ile

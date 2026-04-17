@@ -13,8 +13,8 @@ impl SolMenu {
     }
 
     pub fn baslangic_genisligi_ayarla(&mut self, tema: &Tema) {
-        if self.genislik < tema.sol_panel_min_genislik {
-            self.genislik = tema.sol_panel_min_genislik;
+        if self.genislik < tema.yerlesim.sol_panel_min_genislik {
+            self.genislik = tema.yerlesim.sol_panel_min_genislik;
         }
     }
 
@@ -22,12 +22,12 @@ impl SolMenu {
         let mut base = div()
             .id("sol-panel")
             .w(self.genislik)
-            .min_w(tema.sol_panel_min_genislik)
+            .min_w(tema.yerlesim.sol_panel_min_genislik)
             .h_full()
             .flex_shrink_0();
 
-        if tema.ust_sinir {
-            base = base.pt(tema.ust_bar_yukseklik);
+        if tema.yerlesim.ust_sinir {
+            base = base.pt(tema.yerlesim.ust_bar_yukseklik);
         }
 
         base

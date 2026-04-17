@@ -103,16 +103,10 @@ pub enum Gorunum {
 // ── Sistem gorunumu (Zed `SystemAppearance` esdegeri) ──────
 
 /// Isletim sistemi genelinde aydinlik/koyu tercihini tasiyan `Global`.
-/// Zed'in `SystemAppearance(pub Appearance)` newtype pattern'i ile ayni rol.
-/// `dark-light` crate'i macOS'ta `NSApp.effectiveAppearance`, Linux'ta
-/// gsettings/xdg-desktop-portal, Windows'ta Personalize registry anahtarini
-/// sorgular.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct SistemGorunumu(pub Gorunum);
 
 impl SistemGorunumu {
-    /// Sistemi tek seferlik sorgular. `Mode::Default` (tercih bildirilmemis)
-    /// durumunda Koyu'ya dusulur — uygulama icin nihai bir default gerekli.
     pub fn tespit_et() -> Self {
         let gorunum = match dark_light::detect() {
             dark_light::Mode::Dark => Gorunum::Koyu,
@@ -148,7 +142,7 @@ pub enum PencereModu {
 
 /// Kullanicinin aktif varyant tercihi. `Sabit`: tek bir varyant ismi.
 /// `Sistem`: aydinlik/koyu icin ayri iki isim, `SistemGorunumu`'na gore
-/// secilir. Zed'in `ThemeSettings::theme_selection` ayirimiyla ayni.
+/// secilir.
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(tag = "mod", rename_all = "lowercase")]
 pub enum TemaSecimi {
@@ -162,7 +156,6 @@ pub enum TemaSecimi {
 }
 
 impl TemaSecimi {
-    /// Verilen sistem gorunumuyle aktif varyantin adini dondurur.
     fn hedef_ad(&self, sistem: Gorunum) -> &str {
         match self {
             TemaSecimi::Sabit { varyant } => varyant.as_str(),
@@ -176,9 +169,6 @@ impl TemaSecimi {
 
 // ── TOML dosya yapisi ──────────────────────────────────────
 
-/// Bir tema ailesinin TOML temsili. Zed'in `ThemeFamilyContent` + `ThemeRegistry`
-/// ikilisiyle ayni rolu tasir: tek dosyada birden cok varyant, aktif varyant
-/// `TemaSecimi` ile secilir.
 #[derive(Deserialize, Serialize)]
 pub struct TemaAilesiDosyasi {
     pub ad: String,
@@ -187,8 +177,9 @@ pub struct TemaAilesiDosyasi {
     pub varyantlar: Vec<TemaVaryantDosyasi>,
 }
 
-/// Tek bir tema varyantinin TOML temsili. Zed'in `ThemeContent` esdegeri;
-/// aile icinde birden cok tanesi bulunur.
+/// Zed'in `ThemeContent` esdegeri: bir varyantin tum yapisi.
+/// Bolumleme Zed `ThemeStyles` ile benzesim: pencere/yerlesim + semantik
+/// renk gruplari (`renkler` = `ThemeColors`, `durum` = `StatusColors`).
 #[derive(Deserialize, Serialize)]
 pub struct TemaVaryantDosyasi {
     pub ad: String,
@@ -196,23 +187,8 @@ pub struct TemaVaryantDosyasi {
     pub gorunum: Gorunum,
     pub pencere: PencereBolumu,
     pub yerlesim: YerlesimBolumu,
-    pub ust_bar: UstBarBolumu,
-    pub metin: MetinBolumu,
-    pub buton: ButonBolumu,
-    pub kontrol: KontrolBolumu,
-    pub kenarlik: KenarlikBolumu,
-    pub vurgu: VurguBolumu,
-    pub yuzey: YuzeyBolumu,
+    pub renkler: RenklerBolumu,
     pub durum: DurumBolumu,
-    pub golge: GolgeBolumu,
-}
-
-#[derive(Deserialize, Serialize)]
-pub struct YerlesimBolumu {
-    pub sol_panel_min_genislik: f64,
-    pub calisma_yuzeyi_kavis: f64,
-    pub calisma_yuzeyi_kavisli_mi: bool,
-    pub ust_sinir: bool,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -232,55 +208,59 @@ pub struct PencereBolumu {
 }
 
 #[derive(Deserialize, Serialize)]
-pub struct UstBarBolumu {
-    pub yukseklik: f64,
-    pub sol_bosluk: f64,
-    pub arka_plan: String,
+pub struct YerlesimBolumu {
+    pub ust_bar_yukseklik: f64,
+    pub ust_bar_sol_bosluk: f64,
+    pub sol_panel_min_genislik: f64,
+    pub calisma_yuzeyi_kavis: f64,
+    pub calisma_yuzeyi_kavisli_mi: bool,
+    pub ust_sinir: bool,
+}
+
+/// Zed `ThemeColors`'inin bizim uygulamamiza indirgenmis hali.
+/// Alanlar Zed semantiginin Turkce karsiligi: `text` → `metin`,
+/// `element_background` → `eleman_arka_plan`, `ghost_element_hover`
+/// yerine icon-hover olarak acik semantik (`ikon_vurgu`, `ikon_kritik`).
+#[derive(Deserialize, Serialize)]
+pub struct RenklerBolumu {
+    // Yuzeyler
+    pub yuzey_arka_plan: String,
+    pub yuksek_yuzey_arka_plan: String,
+    pub panel_arka_plan: String,
+    pub baslik_cubugu_arka_plan: String,
+    pub baslik_cubugu_ayirici: String,
+
+    // Etkilesimli eleman (buton vs.)
+    pub eleman_arka_plan: String,
+    pub eleman_hover: String,
+    pub eleman_aktif: String,
+    pub eleman_metin: String,
+
+    // Metin
     pub metin: String,
-    pub ayirici: String,
+    pub metin_sessiz: String,
+    pub metin_yer_tutucu: String,
+
+    // Ikon (kontrol butonlari ve genel ikon rengi)
+    pub ikon: String,
+    pub ikon_vurgu: String,
+    pub ikon_kritik: String,
+
+    // Kenarlik
+    pub kenarlik: String,
+    pub kenarlik_varyant: String,
+
+    // Vurgu (accent)
+    pub vurgu: String,
+    pub vurgu_hover: String,
+
+    // Golge
+    pub golge: String,
+    pub golge_seffaflik: f64,
 }
 
-#[derive(Deserialize, Serialize)]
-pub struct MetinBolumu {
-    pub birincil: String,
-    pub ikincil: String,
-    pub soluk: String,
-}
-
-#[derive(Deserialize, Serialize)]
-pub struct ButonBolumu {
-    pub arka_plan: String,
-    pub hover: String,
-    pub aktif: String,
-    pub metin: String,
-}
-
-#[derive(Deserialize, Serialize)]
-pub struct KontrolBolumu {
-    pub hover: String,
-    pub kapat_hover: String,
-}
-
-#[derive(Deserialize, Serialize)]
-pub struct KenarlikBolumu {
-    pub renk: String,
-    pub ayirici: String,
-}
-
-#[derive(Deserialize, Serialize)]
-pub struct VurguBolumu {
-    pub renk: String,
-    pub hover: String,
-    pub metin: String,
-}
-
-#[derive(Deserialize, Serialize)]
-pub struct YuzeyBolumu {
-    pub katman_1: String,
-    pub katman_2: String,
-    pub katman_3: String,
-}
-
+/// Zed `StatusColors`'inin kisa versiyonu — editor-spesifik (modified,
+/// conflict, hint, vb.) alanlar uygulama kapsaminda gereksiz.
 #[derive(Deserialize, Serialize)]
 pub struct DurumBolumu {
     pub basari: String,
@@ -289,15 +269,8 @@ pub struct DurumBolumu {
     pub bilgi: String,
 }
 
-#[derive(Deserialize, Serialize)]
-pub struct GolgeBolumu {
-    pub renk: String,
-    pub seffaflik: f64,
-}
-
 impl TemaAilesiDosyasi {
-    /// Varsayilan tema ailesi: "KavisNet Koyu" + "KavisNet Aydinlik", sistem
-    /// gorunumune gore otomatik secim aktif.
+    /// Varsayilan tema ailesi: "KavisNet Koyu" + "KavisNet Aydinlik".
     pub fn varsayilan() -> Self {
         Self {
             ad: "KavisNet".into(),
@@ -315,7 +288,6 @@ impl TemaAilesiDosyasi {
 }
 
 impl TemaVaryantDosyasi {
-    /// Varsayilan koyu varyant.
     pub fn varsayilan_koyu() -> Self {
         Self {
             ad: "KavisNet Koyu".into(),
@@ -328,46 +300,35 @@ impl TemaVaryantDosyasi {
                 kavis: 10.0,
             },
             yerlesim: YerlesimBolumu {
+                ust_bar_yukseklik: 40.0,
+                ust_bar_sol_bosluk: varsayilan_ust_bar_sol_bosluk(),
                 sol_panel_min_genislik: 220.0,
                 calisma_yuzeyi_kavis: 10.0,
                 calisma_yuzeyi_kavisli_mi: true,
                 ust_sinir: true,
             },
-            ust_bar: UstBarBolumu {
-                yukseklik: 40.0,
-                sol_bosluk: varsayilan_ust_bar_sol_bosluk(),
-                arka_plan: "#141420".into(),
-                metin: "#E8E8F0".into(),
-                ayirici: "#2A2A3E".into(),
-            },
-            metin: MetinBolumu {
-                birincil: "#EDEDED".into(),
-                ikincil: "#B3B3B3".into(),
-                soluk: "#737373".into(),
-            },
-            buton: ButonBolumu {
-                arka_plan: "#2A2A3E".into(),
-                hover: "#3A3A4E".into(),
-                aktif: "#4A4A5E".into(),
+            renkler: RenklerBolumu {
+                yuzey_arka_plan: "#1E1E32".into(),
+                yuksek_yuzey_arka_plan: "#24243A".into(),
+                panel_arka_plan: "#141420".into(),
+                baslik_cubugu_arka_plan: "#141420".into(),
+                baslik_cubugu_ayirici: "#2A2A3E".into(),
+                eleman_arka_plan: "#2A2A3E".into(),
+                eleman_hover: "#3A3A4E".into(),
+                eleman_aktif: "#4A4A5E".into(),
+                eleman_metin: "#EDEDED".into(),
                 metin: "#EDEDED".into(),
-            },
-            kontrol: KontrolBolumu {
-                hover: "#B8C7FF".into(),
-                kapat_hover: "#FF7A7A".into(),
-            },
-            kenarlik: KenarlikBolumu {
-                renk: "#2A2A3E".into(),
-                ayirici: "#222233".into(),
-            },
-            vurgu: VurguBolumu {
-                renk: "#5599DD".into(),
-                hover: "#66AAEE".into(),
-                metin: "#FFFFFF".into(),
-            },
-            yuzey: YuzeyBolumu {
-                katman_1: "#1E1E32".into(),
-                katman_2: "#24243A".into(),
-                katman_3: "#2A2A42".into(),
+                metin_sessiz: "#B3B3B3".into(),
+                metin_yer_tutucu: "#737373".into(),
+                ikon: "#E8E8F0".into(),
+                ikon_vurgu: "#B8C7FF".into(),
+                ikon_kritik: "#FF7A7A".into(),
+                kenarlik: "#2A2A3E".into(),
+                kenarlik_varyant: "#222233".into(),
+                vurgu: "#5599DD".into(),
+                vurgu_hover: "#66AAEE".into(),
+                golge: "#000000".into(),
+                golge_seffaflik: 0.40,
             },
             durum: DurumBolumu {
                 basari: "#55BB77".into(),
@@ -375,15 +336,9 @@ impl TemaVaryantDosyasi {
                 hata: "#DD5555".into(),
                 bilgi: "#5599DD".into(),
             },
-            golge: GolgeBolumu {
-                renk: "#000000".into(),
-                seffaflik: 0.40,
-            },
         }
     }
 
-    /// Varsayilan aydinlik varyant. Koyunun tamamlayicisi; ayni semantik
-    /// alanlar dolu — kullanici bazi alanlari silse de tutarli kalsin.
     pub fn varsayilan_aydinlik() -> Self {
         Self {
             ad: "KavisNet Aydinlik".into(),
@@ -396,46 +351,35 @@ impl TemaVaryantDosyasi {
                 kavis: 10.0,
             },
             yerlesim: YerlesimBolumu {
+                ust_bar_yukseklik: 40.0,
+                ust_bar_sol_bosluk: varsayilan_ust_bar_sol_bosluk(),
                 sol_panel_min_genislik: 220.0,
                 calisma_yuzeyi_kavis: 10.0,
                 calisma_yuzeyi_kavisli_mi: true,
                 ust_sinir: true,
             },
-            ust_bar: UstBarBolumu {
-                yukseklik: 40.0,
-                sol_bosluk: varsayilan_ust_bar_sol_bosluk(),
-                arka_plan: "#ECECF5".into(),
+            renkler: RenklerBolumu {
+                yuzey_arka_plan: "#FFFFFF".into(),
+                yuksek_yuzey_arka_plan: "#F8F8FC".into(),
+                panel_arka_plan: "#ECECF5".into(),
+                baslik_cubugu_arka_plan: "#ECECF5".into(),
+                baslik_cubugu_ayirici: "#D0D0DD".into(),
+                eleman_arka_plan: "#DDDDEE".into(),
+                eleman_hover: "#CCCCDD".into(),
+                eleman_aktif: "#BBBBCC".into(),
+                eleman_metin: "#1A1A2E".into(),
                 metin: "#1A1A2E".into(),
-                ayirici: "#D0D0DD".into(),
-            },
-            metin: MetinBolumu {
-                birincil: "#1A1A2E".into(),
-                ikincil: "#4A4A5E".into(),
-                soluk: "#8A8A9E".into(),
-            },
-            buton: ButonBolumu {
-                arka_plan: "#DDDDEE".into(),
-                hover: "#CCCCDD".into(),
-                aktif: "#BBBBCC".into(),
-                metin: "#1A1A2E".into(),
-            },
-            kontrol: KontrolBolumu {
-                hover: "#3355BB".into(),
-                kapat_hover: "#DD3333".into(),
-            },
-            kenarlik: KenarlikBolumu {
-                renk: "#D0D0DD".into(),
-                ayirici: "#E0E0EE".into(),
-            },
-            vurgu: VurguBolumu {
-                renk: "#3377CC".into(),
-                hover: "#2266BB".into(),
-                metin: "#FFFFFF".into(),
-            },
-            yuzey: YuzeyBolumu {
-                katman_1: "#FFFFFF".into(),
-                katman_2: "#F8F8FC".into(),
-                katman_3: "#F0F0F5".into(),
+                metin_sessiz: "#4A4A5E".into(),
+                metin_yer_tutucu: "#8A8A9E".into(),
+                ikon: "#1A1A2E".into(),
+                ikon_vurgu: "#3355BB".into(),
+                ikon_kritik: "#DD3333".into(),
+                kenarlik: "#D0D0DD".into(),
+                kenarlik_varyant: "#E0E0EE".into(),
+                vurgu: "#3377CC".into(),
+                vurgu_hover: "#2266BB".into(),
+                golge: "#000000".into(),
+                golge_seffaflik: 0.20,
             },
             durum: DurumBolumu {
                 basari: "#33AA55".into(),
@@ -443,20 +387,12 @@ impl TemaVaryantDosyasi {
                 hata: "#CC3333".into(),
                 bilgi: "#3377CC".into(),
             },
-            golge: GolgeBolumu {
-                renk: "#000000".into(),
-                seffaflik: 0.20,
-            },
         }
     }
 }
 
 // ── Tema dosya yolu ────────────────────────────────────────
 
-/// Tema dosyasinin yolunu dondurur.
-/// Linux:   ~/.config/KavisNet/tema.toml
-/// macOS:   ~/Library/Application Support/KavisNet/tema.toml
-/// Windows: %APPDATA%\KavisNet\tema.toml
 pub fn tema_dosya_yolu() -> PathBuf {
     let mut yol = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
     yol.push("KavisNet");
@@ -466,77 +402,86 @@ pub fn tema_dosya_yolu() -> PathBuf {
 
 // ── Calisma zamani tema yapisi ─────────────────────────────
 
-/// Tum uygulama renklerini tek bir yerden yoneten tema yapisi.
-///
-/// Zed'in `Theme` yapisi `Arc` sarmaliyken bizim `Tema` dogrudan `Global`
-/// olarak `cx` icinde tutuluyor; `SharedString` iceren alanlar yuzunden
-/// `Copy` degil `Clone`.
+/// Zed `ThemeStyles` esdegeri: bir temanin tum semantik renk gruplari.
+/// `renkler` = `ThemeColors`, `durum` = `StatusColors`. Flat alan yerine
+/// gruplama: `cx.tema().renkler.metin`, `cx.tema().durum.hata`.
 #[derive(Clone)]
 pub struct Tema {
-    // ── Kimlik ──
+    // Kimlik
     pub ad: SharedString,
     pub gorunum: Gorunum,
 
-    // ── Pencere (sadece burasi blur/seffaf) ──
+    // Pencere kok (platform pencere moduna gore alpha ve kavis hesaplanir)
     pub pencere_gorunum: WindowBackgroundAppearance,
-    pub pencere_arka_plan: Hsla,
+    pub arka_plan: Hsla,
     pub pencere_kavis: Pixels,
 
-    // ── Yerlesim ──
+    pub yerlesim: YerlesimBoyutlari,
+    pub renkler: TemaRenkleri,
+    pub durum: DurumRenkleri,
+}
+
+/// Boyutsal ve davranissal UI bayraklari. Zed'de bu degerler `UiSettings`
+/// altinda; biz tek tema dosyasinda tuttugumuz icin tema icinde.
+#[derive(Clone, Copy)]
+pub struct YerlesimBoyutlari {
     pub ust_bar_yukseklik: Pixels,
-    pub sol_panel_min_genislik: Pixels,
     pub ust_bar_sol_bosluk: Pixels,
+    pub sol_panel_min_genislik: Pixels,
     pub calisma_yuzeyi_kavis: Pixels,
     pub calisma_yuzeyi_kavisli_mi: bool,
     pub ust_sinir: bool,
+}
 
-    // ── Ust bar ──
-    pub ust_bar_arka_plan: Hsla,
-    pub ust_bar_metin: Hsla,
-    pub ust_bar_ayirici: Hsla,
+/// Zed `ThemeColors` esdegeri — UI widget/yuzey/metin/ikon renkleri.
+#[derive(Clone, Copy)]
+pub struct TemaRenkleri {
+    // Yuzeyler
+    pub yuzey_arka_plan: Hsla,
+    pub yuksek_yuzey_arka_plan: Hsla,
+    pub panel_arka_plan: Hsla,
+    pub baslik_cubugu_arka_plan: Hsla,
+    pub baslik_cubugu_ayirici: Hsla,
 
-    // ── Metin ──
-    pub metin_birincil: Hsla,
-    pub metin_ikincil: Hsla,
-    pub metin_soluk: Hsla,
+    // Etkilesimli eleman
+    pub eleman_arka_plan: Hsla,
+    pub eleman_hover: Hsla,
+    pub eleman_aktif: Hsla,
+    pub eleman_metin: Hsla,
 
-    // ── Butonlar ──
-    pub buton_arka_plan: Hsla,
-    pub buton_hover: Hsla,
-    pub buton_aktif: Hsla,
-    pub buton_metin: Hsla,
+    // Metin
+    pub metin: Hsla,
+    pub metin_sessiz: Hsla,
+    pub metin_yer_tutucu: Hsla,
 
-    // ── Pencere kontrol butonlari ──
-    pub kontrol_hover: Hsla,
-    pub kontrol_kapat_hover: Hsla,
+    // Ikon
+    pub ikon: Hsla,
+    pub ikon_vurgu: Hsla,
+    pub ikon_kritik: Hsla,
 
-    // ── Kenarlik ve ayiricilar ──
+    // Kenarlik
     pub kenarlik: Hsla,
-    pub ayirici: Hsla,
+    pub kenarlik_varyant: Hsla,
 
-    // ── Vurgu (accent) ──
+    // Vurgu
     pub vurgu: Hsla,
     pub vurgu_hover: Hsla,
-    pub vurgu_metin: Hsla,
 
-    // ── Yuzey katmanlari ──
-    pub yuzey_1: Hsla,
-    pub yuzey_2: Hsla,
-    pub yuzey_3: Hsla,
+    // Golge (alpha dahil)
+    pub golge: Hsla,
+}
 
-    // ── Durum renkleri ──
+/// Zed `StatusColors` esdegeri.
+#[derive(Clone, Copy)]
+pub struct DurumRenkleri {
     pub basari: Hsla,
     pub uyari: Hsla,
     pub hata: Hsla,
     pub bilgi: Hsla,
-
-    // ── Golge ──
-    pub golge: Hsla,
 }
 
 impl Tema {
-    /// Tek bir varyanttan calisma zamani `Tema`'sini olusturur. `TemaKaydi`
-    /// butun varyantlari yuklerken bunu kullanir.
+    /// Tek bir varyanttan calisma zamani `Tema`'sini olusturur.
     fn varyanttan_olustur(d: &TemaVaryantDosyasi) -> Self {
         // ust_sinir = false iken pencere geleneksel/klasik gorunum alir:
         // seffaflik/blur devre disi, kose kavisi 0.
@@ -550,16 +495,16 @@ impl Tema {
             }
         };
 
-        let mut pencere_bg = hex_renk(&d.pencere.arka_plan);
+        let mut arka_plan = hex_renk(&d.pencere.arka_plan);
         match pencere_gorunum {
             WindowBackgroundAppearance::Blurred => {
-                pencere_bg.a = d.pencere.blur_seffaflik as f32;
+                arka_plan.a = d.pencere.blur_seffaflik as f32;
             }
             WindowBackgroundAppearance::Transparent => {
-                pencere_bg.a = d.pencere.seffaf_seffaflik as f32;
+                arka_plan.a = d.pencere.seffaf_seffaflik as f32;
             }
             _ => {
-                pencere_bg.a = 1.0;
+                arka_plan.a = 1.0;
             }
         }
 
@@ -568,57 +513,61 @@ impl Tema {
             _ => px(d.pencere.kavis as f32),
         };
 
-        let mut golge = hex_renk(&d.golge.renk);
-        golge.a = d.golge.seffaflik as f32;
+        let mut golge = hex_renk(&d.renkler.golge);
+        golge.a = d.renkler.golge_seffaflik as f32;
 
         Self {
             ad: SharedString::from(d.ad.clone()),
             gorunum: d.gorunum,
 
             pencere_gorunum,
-            pencere_arka_plan: pencere_bg,
+            arka_plan,
             pencere_kavis,
 
-            ust_bar_yukseklik: px(d.ust_bar.yukseklik as f32),
-            sol_panel_min_genislik: px(d.yerlesim.sol_panel_min_genislik as f32),
-            ust_bar_sol_bosluk: px(d.ust_bar.sol_bosluk as f32),
-            calisma_yuzeyi_kavis: px(d.yerlesim.calisma_yuzeyi_kavis as f32),
-            calisma_yuzeyi_kavisli_mi: d.yerlesim.calisma_yuzeyi_kavisli_mi,
-            ust_sinir: d.yerlesim.ust_sinir,
+            yerlesim: YerlesimBoyutlari {
+                ust_bar_yukseklik: px(d.yerlesim.ust_bar_yukseklik as f32),
+                ust_bar_sol_bosluk: px(d.yerlesim.ust_bar_sol_bosluk as f32),
+                sol_panel_min_genislik: px(d.yerlesim.sol_panel_min_genislik as f32),
+                calisma_yuzeyi_kavis: px(d.yerlesim.calisma_yuzeyi_kavis as f32),
+                calisma_yuzeyi_kavisli_mi: d.yerlesim.calisma_yuzeyi_kavisli_mi,
+                ust_sinir: d.yerlesim.ust_sinir,
+            },
 
-            ust_bar_arka_plan: hex_renk(&d.ust_bar.arka_plan),
-            ust_bar_metin: hex_renk(&d.ust_bar.metin),
-            ust_bar_ayirici: hex_renk(&d.ust_bar.ayirici),
+            renkler: TemaRenkleri {
+                yuzey_arka_plan: hex_renk(&d.renkler.yuzey_arka_plan),
+                yuksek_yuzey_arka_plan: hex_renk(&d.renkler.yuksek_yuzey_arka_plan),
+                panel_arka_plan: hex_renk(&d.renkler.panel_arka_plan),
+                baslik_cubugu_arka_plan: hex_renk(&d.renkler.baslik_cubugu_arka_plan),
+                baslik_cubugu_ayirici: hex_renk(&d.renkler.baslik_cubugu_ayirici),
 
-            metin_birincil: hex_renk(&d.metin.birincil),
-            metin_ikincil: hex_renk(&d.metin.ikincil),
-            metin_soluk: hex_renk(&d.metin.soluk),
+                eleman_arka_plan: hex_renk(&d.renkler.eleman_arka_plan),
+                eleman_hover: hex_renk(&d.renkler.eleman_hover),
+                eleman_aktif: hex_renk(&d.renkler.eleman_aktif),
+                eleman_metin: hex_renk(&d.renkler.eleman_metin),
 
-            buton_arka_plan: hex_renk(&d.buton.arka_plan),
-            buton_hover: hex_renk(&d.buton.hover),
-            buton_aktif: hex_renk(&d.buton.aktif),
-            buton_metin: hex_renk(&d.buton.metin),
+                metin: hex_renk(&d.renkler.metin),
+                metin_sessiz: hex_renk(&d.renkler.metin_sessiz),
+                metin_yer_tutucu: hex_renk(&d.renkler.metin_yer_tutucu),
 
-            kontrol_hover: hex_renk(&d.kontrol.hover),
-            kontrol_kapat_hover: hex_renk(&d.kontrol.kapat_hover),
+                ikon: hex_renk(&d.renkler.ikon),
+                ikon_vurgu: hex_renk(&d.renkler.ikon_vurgu),
+                ikon_kritik: hex_renk(&d.renkler.ikon_kritik),
 
-            kenarlik: hex_renk(&d.kenarlik.renk),
-            ayirici: hex_renk(&d.kenarlik.ayirici),
+                kenarlik: hex_renk(&d.renkler.kenarlik),
+                kenarlik_varyant: hex_renk(&d.renkler.kenarlik_varyant),
 
-            vurgu: hex_renk(&d.vurgu.renk),
-            vurgu_hover: hex_renk(&d.vurgu.hover),
-            vurgu_metin: hex_renk(&d.vurgu.metin),
+                vurgu: hex_renk(&d.renkler.vurgu),
+                vurgu_hover: hex_renk(&d.renkler.vurgu_hover),
 
-            yuzey_1: hex_renk(&d.yuzey.katman_1),
-            yuzey_2: hex_renk(&d.yuzey.katman_2),
-            yuzey_3: hex_renk(&d.yuzey.katman_3),
+                golge,
+            },
 
-            basari: hex_renk(&d.durum.basari),
-            uyari: hex_renk(&d.durum.uyari),
-            hata: hex_renk(&d.durum.hata),
-            bilgi: hex_renk(&d.durum.bilgi),
-
-            golge,
+            durum: DurumRenkleri {
+                basari: hex_renk(&d.durum.basari),
+                uyari: hex_renk(&d.durum.uyari),
+                hata: hex_renk(&d.durum.hata),
+                bilgi: hex_renk(&d.durum.bilgi),
+            },
         }
     }
 }
@@ -627,8 +576,6 @@ impl Global for Tema {}
 
 // ── AktifTema (Zed `ActiveTheme` esdegeri) ──────────────────
 
-/// `cx.tema()` cagrisi icin ergonomik trait. Zed'in `ActiveTheme` pattern'i
-/// ile ayni: `App`/`Context` deref zinciri uzerinden global tema referansi.
 pub trait AktifTema {
     fn tema(&self) -> &Tema;
 }
@@ -641,23 +588,15 @@ impl AktifTema for App {
 
 // ── TemaKaydi (Zed `ThemeRegistry` esdegeri) ────────────────
 
-/// Yuklenmis tum tema varyantlarini barindiran global defter. Varsayilan
-/// Koyu + Aydinlik her zaman icerir; kullanici ekledigi varyantlar ayni
-/// ada sahipse ustune yazar (Zed `ThemeRegistry::register` ile ayni).
 pub struct TemaKaydi {
     temalar: Vec<Tema>,
 }
 
 impl TemaKaydi {
-    /// Tamamen bos kayit. Tek basina yeterli degildir — `aktif_temayi_sec`
-    /// fallback icin en az bir girdiye ihtiyac duyar. Genellikle
-    /// `varsayilan_ile` ile olusturulur.
     pub fn yeni_bos() -> Self {
         Self { temalar: Vec::new() }
     }
 
-    /// Varsayilan Koyu + Aydinlik temalari onceden eklenmis kayit.
-    /// Kullanici dosyasi bu iki temayi ezebilir veya ek tema ekleyebilir.
     pub fn varsayilan_ile() -> Self {
         let mut kayit = Self::yeni_bos();
         kayit.kaydet(Tema::varyanttan_olustur(&TemaVaryantDosyasi::varsayilan_koyu()));
@@ -665,7 +604,6 @@ impl TemaKaydi {
         kayit
     }
 
-    /// Ad cakismasi varsa mevcut kaydin uzerine yazar, yoksa sona ekler.
     pub fn kaydet(&mut self, tema: Tema) {
         if let Some(yer) = self.temalar.iter().position(|t| t.ad == tema.ad) {
             self.temalar[yer] = tema;
@@ -682,7 +620,6 @@ impl TemaKaydi {
         self.temalar.iter().map(|t| t.ad.clone()).collect()
     }
 
-    /// Belirtilen gorunume sahip (koyu veya aydinlik) tum temalar.
     pub fn gorunume_gore(&self, gorunum: Gorunum) -> Vec<&Tema> {
         self.temalar
             .iter()
@@ -690,7 +627,6 @@ impl TemaKaydi {
             .collect()
     }
 
-    /// Bos olmayan bir kayitta ilk tema; mutlak fallback.
     fn ilk(&self) -> Option<&Tema> {
         self.temalar.first()
     }
@@ -704,12 +640,6 @@ impl Global for TemaKaydi {}
 
 // ── Tema kurulumu ve yukleme ───────────────────────────────
 
-/// Tema modulunu `App`'e kurar: `SistemGorunumu`, `TemaKaydi` ve aktif `Tema`
-/// global'lerini yerlestirir. Zed'in `theme::init` + `LoadThemes` + ayar
-/// observer'larinin ettigi isi tek fonksiyonda ozetliyor.
-///
-/// `temayi_izle` sonradan cagrilmasi beklenen ayri bir watcher — `kurulum`
-/// sadece baslangic durumunu hazirlar.
 pub fn kurulum(cx: &mut App) {
     let sistem = SistemGorunumu::tespit_et();
     let (kayit, aktif) = yukleme_bileseni(sistem.0);
@@ -718,8 +648,6 @@ pub fn kurulum(cx: &mut App) {
     cx.set_global(aktif);
 }
 
-/// Dosyadan (yoksa varsayilandan) kayit + aktif tema uretir.
-/// `SistemGorunumu` `TemaSecimi::Sistem` icin aktif varyanti belirler.
 fn yukleme_bileseni(sistem: Gorunum) -> (TemaKaydi, Tema) {
     let yol = tema_dosya_yolu();
     let aile = aileyi_yukle_veya_yaz(&yol);
@@ -733,8 +661,6 @@ fn yukleme_bileseni(sistem: Gorunum) -> (TemaKaydi, Tema) {
     (kayit, aktif)
 }
 
-/// Dosyayi okur/ayristirir; hata varsa varsayilan aileyi dondurur.
-/// Dosya hic yoksa varsayilan aileyi diske yazar.
 fn aileyi_yukle_veya_yaz(yol: &Path) -> TemaAilesiDosyasi {
     if yol.exists() {
         match std::fs::read_to_string(yol) {
@@ -776,13 +702,14 @@ fn aileyi_yukle_veya_yaz(yol: &Path) -> TemaAilesiDosyasi {
 #   aydinlik = \"KavisNet Aydinlik\"
 #   koyu = \"KavisNet Koyu\"
 #
+# Renk kategorileri (Zed ThemeColors/StatusColors tabanli):
+#   [varyantlar.renkler] — UI widget, yuzey, metin, ikon, kenarlik, vurgu
+#   [varyantlar.durum]   — basari/uyari/hata/bilgi
+#
 # Pencere modu:
 #   \"otomatik\" - Sistem blur destekliyorsa blur, yoksa seffaf
 #   \"seffaf\"   - Her zaman seffaf (blur yok)
 #   \"opak\"     - Her zaman opak
-#
-# Gorunum alani: \"koyu\" veya \"aydinlik\" — `secim` sistem modunda iken
-#               hangi varyantin aydinlik/koyu sayilacagini belirtir.
 #
 # Renkler: \"#RRGGBB\" veya \"#RRGGBBAA\" (alfa ile)
 # Seffaflik: 0.0 (gorunmez) - 1.0 (opak)
@@ -797,9 +724,6 @@ fn aileyi_yukle_veya_yaz(yol: &Path) -> TemaAilesiDosyasi {
     }
 }
 
-/// Secimi ve sistemi birlikte degerlendirerek kayittan aktif temayi dondurur.
-/// Hedef varyant bulunamazsa kayittaki ilk temaya, o da yoksa yerlesik
-/// varsayilan koyuya duser.
 fn secim_ile_aktif_tema(secim: &TemaSecimi, sistem: Gorunum, kayit: &TemaKaydi) -> Tema {
     let hedef = secim.hedef_ad(sistem);
     kayit
@@ -814,8 +738,6 @@ fn secim_ile_aktif_tema(secim: &TemaSecimi, sistem: Gorunum, kayit: &TemaKaydi) 
         })
 }
 
-/// Tema dosyasini arka planda izler; degisiklik oldugunda kayit + aktif
-/// temayi birlikte gunceller. Zed'in tema dosyasi watcher'inin esdegeri.
 pub fn temayi_izle(cx: &mut App) {
     use notify::{RecursiveMode, Watcher};
     use std::sync::mpsc::channel;
@@ -876,7 +798,6 @@ pub fn temayi_izle(cx: &mut App) {
                         son_icerik.clear();
                         let _ = cx.update(|cx| {
                             let sistem = SistemGorunumu::global(cx).0;
-                            // Dosya yok — varsayilan aileden yeniden kur.
                             let mut kayit = TemaKaydi::varsayilan_ile();
                             let aile = TemaAilesiDosyasi::varsayilan();
                             for v in &aile.varyantlar {
@@ -912,7 +833,6 @@ fn varsayilan_ust_bar_sol_bosluk() -> f64 {
 
 // ── Sistem blur destegi algilama ───────────────────────────
 
-/// Mevcut platformda compositor blur destegi olup olmadigini tespit eder.
 fn sistem_blur_destegi() -> WindowBackgroundAppearance {
     #[cfg(target_os = "macos")]
     {
@@ -932,8 +852,7 @@ fn sistem_blur_destegi() -> WindowBackgroundAppearance {
         //   Hyprland         — `org_kde_kwin_blur_manager` global'ini sunar.
         //   Wayfire (+plugin) — aynı protokolü sunar.
         // GNOME Mutter, Sway, Weston bu protokolü sunmadığı için Transparent
-        // kalıyor (GPUI blur isteğini sessizce etkisiz bırakır, ama alpha
-        // `blur_seffaflik` değerine takılacağı için silik görünüm olur).
+        // kalıyor.
         let oturum = std::env::var("XDG_SESSION_TYPE").unwrap_or_default();
         let masaustu = std::env::var("XDG_CURRENT_DESKTOP")
             .unwrap_or_default()

@@ -76,13 +76,13 @@ impl Render for AnaPanel {
             .size_full()
             .flex()
             .flex_col()
-            .bg(tema.pencere_arka_plan)
+            .bg(tema.arka_plan)
             .rounded(tema.pencere_kavis)
             .border_1()
-            .border_color(tema.kenarlik)
+            .border_color(tema.renkler.kenarlik)
             .overflow_hidden();
 
-        let base = if tema.ust_sinir {
+        let base = if tema.yerlesim.ust_sinir {
             base.relative().child(icerik_satiri).child(
                 div()
                     .absolute()
@@ -196,18 +196,18 @@ impl CalismaYuzeyi {
             .flex_1()
             .flex()
             .flex_col()
-            .bg(tema.yuzey_1)
+            .bg(tema.renkler.yuzey_arka_plan)
             .overflow_hidden()
             .border_l_1()
-            .border_color(tema.kenarlik)
+            .border_color(tema.renkler.kenarlik)
             .rounded_br(tema.pencere_kavis);
 
-        if tema.ust_sinir {
+        if tema.yerlesim.ust_sinir {
             base = base.rounded_tr(tema.pencere_kavis);
         }
 
-        if tema.calisma_yuzeyi_kavisli_mi && tema.ust_sinir {
-            base = base.rounded_tl(tema.calisma_yuzeyi_kavis);
+        if tema.yerlesim.calisma_yuzeyi_kavisli_mi && tema.yerlesim.ust_sinir {
+            base = base.rounded_tl(tema.yerlesim.calisma_yuzeyi_kavis);
         }
 
         base.child(div().id("icerik").flex_1())

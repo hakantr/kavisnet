@@ -32,17 +32,17 @@ impl Render for UstBar {
         let mut kok = div()
             .id("ust-bar")
             .w_full()
-            .h(tema.ust_bar_yukseklik)
+            .h(tema.yerlesim.ust_bar_yukseklik)
             .flex_shrink_0()
             .flex()
             .flex_row()
             .items_center()
             .justify_between()
-            .pl(tema.ust_bar_sol_bosluk)
+            .pl(tema.yerlesim.ust_bar_sol_bosluk)
             .window_control_area(WindowControlArea::Drag);
 
-        if !tema.ust_sinir {
-            kok = kok.border_b_1().border_color(tema.ust_bar_ayirici);
+        if !tema.yerlesim.ust_sinir {
+            kok = kok.border_b_1().border_color(tema.renkler.baslik_cubugu_ayirici);
         }
 
         kok.on_mouse_down(
@@ -101,7 +101,7 @@ impl Render for UstBar {
                 .flex_1()
                 .child(
                     div()
-                        .text_color(tema.ust_bar_metin)
+                        .text_color(tema.renkler.metin)
                         .text_size(px(14.))
                         .child("Merhaba Dünya!"),
                 ),
