@@ -48,6 +48,20 @@ pub fn ana_pencere_ac(cx: &mut App) {
             .expect("Pencere açılamadı");
 
         cx.update_window(window_handle.into(), |_root, window, cx| {
+            // Acilista pencereden gelen gercek OS gorunumunu oku ve tema
+            // global'lerini buna gore tazele — `SistemGorunumu::tespit_et`
+            // yalnizca pencere olusana kadarki ilk tahmindi.
+            ortak_tema::pencere_gorunumunu_uygula(window, cx);
+
+            // Canli OS tema takibi: GPUI platform dinleyicisi
+            // (macOS viewDidChangeEffectiveAppearance, Linux xdg-desktop-portal
+            // color_scheme) — `dark_light::detect()` polling'ine gerek yok.
+            window
+                .observe_window_appearance(|window, cx| {
+                    ortak_tema::pencere_gorunumunu_uygula(window, cx);
+                })
+                .detach();
+
             window.on_window_should_close(cx, |window, cx| {
                 if kapatma_istegi(window, cx) {
                     cx.quit();

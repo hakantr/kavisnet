@@ -108,17 +108,50 @@ pub enum Gorunum {
 pub struct SistemGorunumu(pub Gorunum);
 
 impl SistemGorunumu {
+    /// Acilista pencere olusmadan once kullanilan en-iyi-tahmin.
+    /// `dark_light::detect()` macOS'ta `NSAppearance currentAppearance`
+    /// thread-local cache yuzunden bazen stale donuyor; Ubuntu/GNOME'da
+    /// ise v1.1 `gtk-theme` okuyor ama GNOME 42+ `color-scheme` kullaniyor
+    /// (gtk-theme artik "Adwaita"/"Yaru" olarak sabit). Bu yuzden canli
+    /// takip `pencere_gorunumunu_uygula()` + `observe_window_appearance`
+    /// ile yapiliyor; burasi sadece window olusana kadarki ilk render'i
+    /// besliyor.
     pub fn tespit_et() -> Self {
         let gorunum = match dark_light::detect() {
             dark_light::Mode::Dark => Gorunum::Koyu,
             dark_light::Mode::Light => Gorunum::Aydinlik,
-            dark_light::Mode::Default => Gorunum::Koyu,
+            // Belirsiz — pencere acildigi an `window.appearance()` ile
+            // duzelecegi icin daha yaygin varsayilan olan Aydinlik'a koy.
+            dark_light::Mode::Default => Gorunum::Aydinlik,
         };
         Self(gorunum)
     }
 
     pub fn global(cx: &App) -> &Self {
         cx.global::<Self>()
+    }
+}
+
+/// Pencere olustuktan sonra GPUI'nin platform dinleyicisiyle gelen
+/// `WindowAppearance`'i okuyup `SistemGorunumu` + `TemaKaydi` + aktif
+/// `Tema` global'lerini senkronlar. Hem ilk cagri (initial) hem de
+/// `observe_window_appearance` callback'i icin ayni giris noktasi.
+///
+/// macOS: `-[NSView viewDidChangeEffectiveAppearance]` uzerinden anlik.
+/// Linux: xdg-desktop-portal `org.freedesktop.appearance/color-scheme`
+///        sinyali; GNOME 42+'nin gercek kaynaginda dinleme (gtk-theme
+///        okumakla hic alakasi yok).
+pub fn pencere_gorunumunu_uygula(window: &mut Window, cx: &mut App) {
+    let gorunum = match window.appearance() {
+        WindowAppearance::Dark | WindowAppearance::VibrantDark => Gorunum::Koyu,
+        WindowAppearance::Light | WindowAppearance::VibrantLight => Gorunum::Aydinlik,
+    };
+    if SistemGorunumu::global(cx).0 != gorunum {
+        cx.set_global(SistemGorunumu(gorunum));
+        let (kayit, aktif) = yukleme_bileseni(gorunum);
+        cx.set_global(kayit);
+        cx.set_global(aktif);
+        println!("Sistem gorunumu degisti: {gorunum:?} — tema yeniden secildi.");
     }
 }
 
@@ -1118,7 +1151,6 @@ pub fn temayi_izle(cx: &mut App) {
         }
 
         let mut son_icerik = std::fs::read_to_string(&yol).unwrap_or_default();
-        let mut son_sistem = cx.update(|cx| SistemGorunumu::global(cx).0);
 
         loop {
             let mut olay_var = false;
@@ -1156,24 +1188,13 @@ pub fn temayi_izle(cx: &mut App) {
                 }
             }
 
-            // Sistem gorunumu (aydinlik/koyu) degisikligi algilama.
-            // dark-light v1 subscribe API'si sunmadigi icin polling yapiyoruz;
-            // detect() cagrisi NSApp.effectiveAppearance / gsettings okumasi
-            // kadar ucuz, 250ms tick'te fark edilmeyecek maliyet.
-            // NOT: dark_light::detect() macOS'ta NSApp'e eristigi icin ana
-            // thread'de calismasi gerekir — cx.update icine aldik.
-            let guncel = cx.update(|_| SistemGorunumu::tespit_et().0);
-            if guncel != son_sistem {
-                son_sistem = guncel;
-                cx.update(|cx| {
-                    cx.set_global(SistemGorunumu(guncel));
-                    let (kayit, aktif) = yukleme_bileseni(guncel);
-                    cx.set_global(kayit);
-                    cx.set_global(aktif);
-                    println!("Sistem gorunumu degisti: {guncel:?} — tema yeniden secildi.");
-                });
-            }
-
+            // Sistem aydinlik/koyu takibi burada yapilmiyor — pencere acilinca
+            // `pencere_gorunumunu_uygula()` + `window.observe_window_appearance`
+            // GPUI'nin platform-native kanali uzerinden gercek zamanli sinyali
+            // dinliyor (macOS viewDidChangeEffectiveAppearance, Linux
+            // xdg-desktop-portal color-scheme). `dark_light::detect()` polling'i
+            // GNOME 42+ / macOS thread-local cache sorunlarindan oturu terk
+            // edildi.
             smol::Timer::after(Duration::from_millis(250)).await;
         }
     })
