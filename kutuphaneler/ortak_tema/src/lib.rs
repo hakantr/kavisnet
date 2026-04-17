@@ -2,6 +2,7 @@
 
 use chrono::Local;
 use gpui::*;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -92,7 +93,7 @@ fn hex_renk(hex: &str) -> Hsla {
 
 /// Temanin aydinlik/koyu yonu. Zed'in `Appearance` enum'u ile eslestiriliyor;
 /// sistem tema algilama ve otomatik varyant secimi icin referans noktasi.
-#[derive(Deserialize, Serialize, Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, JsonSchema, Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Gorunum {
     #[default]
@@ -129,7 +130,7 @@ impl Global for SistemGorunumu {}
 ///   otomatik - Sistem destekliyorsa blur, yoksa seffaf
 ///   seffaf   - Her zaman seffaf (blur olmadan)
 ///   opak     - Her zaman opak
-#[derive(Deserialize, Serialize, Clone, Copy, Default, Debug)]
+#[derive(Deserialize, Serialize, JsonSchema, Clone, Copy, Default, Debug)]
 #[serde(rename_all = "lowercase")]
 pub enum PencereModu {
     #[default]
@@ -143,7 +144,7 @@ pub enum PencereModu {
 /// Kullanicinin aktif varyant tercihi. `Sabit`: tek bir varyant ismi.
 /// `Sistem`: aydinlik/koyu icin ayri iki isim, `SistemGorunumu`'na gore
 /// secilir.
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, JsonSchema, Clone, Debug)]
 #[serde(tag = "mod", rename_all = "lowercase")]
 pub enum TemaSecimi {
     Sabit {
@@ -169,7 +170,7 @@ impl TemaSecimi {
 
 // ── TOML dosya yapisi ──────────────────────────────────────
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, JsonSchema)]
 pub struct TemaAilesiDosyasi {
     pub ad: String,
     pub yazar: String,
@@ -280,7 +281,7 @@ pub struct DurumBolumu {
 /// `temel = None` iken kaynak, `gorunum` alanina gore secilir (koyu →
 /// "KavisNet Koyu", aydinlik → "KavisNet Aydinlik"). Boylece kullanici
 /// sadece degistirmek istedigi alanlari yazar.
-#[derive(Deserialize, Serialize, Default, Clone)]
+#[derive(Deserialize, Serialize, JsonSchema, Default, Clone)]
 pub struct TemaVaryantYamasi {
     pub ad: String,
     /// Kalitim icin kaynak varyant adi. Yoksa `gorunum`'e gore varsayilan
@@ -299,7 +300,7 @@ pub struct TemaVaryantYamasi {
     pub durum: DurumYamasi,
 }
 
-#[derive(Deserialize, Serialize, Default, Clone)]
+#[derive(Deserialize, Serialize, JsonSchema, Default, Clone)]
 pub struct PencereYamasi {
     #[serde(default, rename = "mod")]
     pub pencere_modu: Option<PencereModu>,
@@ -313,7 +314,7 @@ pub struct PencereYamasi {
     pub kavis: Option<f64>,
 }
 
-#[derive(Deserialize, Serialize, Default, Clone)]
+#[derive(Deserialize, Serialize, JsonSchema, Default, Clone)]
 pub struct YerlesimYamasi {
     #[serde(default)]
     pub ust_bar_yukseklik: Option<f64>,
@@ -329,7 +330,7 @@ pub struct YerlesimYamasi {
     pub ust_sinir: Option<bool>,
 }
 
-#[derive(Deserialize, Serialize, Default, Clone)]
+#[derive(Deserialize, Serialize, JsonSchema, Default, Clone)]
 pub struct RenklerYamasi {
     #[serde(default)]
     pub yuzey_arka_plan: Option<String>,
@@ -375,7 +376,7 @@ pub struct RenklerYamasi {
     pub golge_seffaflik: Option<f64>,
 }
 
-#[derive(Deserialize, Serialize, Default, Clone)]
+#[derive(Deserialize, Serialize, JsonSchema, Default, Clone)]
 pub struct DurumYamasi {
     #[serde(default)]
     pub basari: Option<String>,
@@ -646,6 +647,37 @@ pub fn tema_dosya_yolu() -> PathBuf {
     yol
 }
 
+pub fn tema_schema_dosya_yolu() -> PathBuf {
+    tema_dosya_yolu().with_file_name("tema.schema.json")
+}
+
+// ── JSON Schema uretimi ────────────────────────────────────
+
+/// Tema dosyasinin JSON Schema'sini uretir. Taplo ve benzeri TOML
+/// editorleri `tema.schema.json` + `#:schema ./tema.schema.json`
+/// direktifiyle tema.toml'u dogrular ve otomatik tamamlama sunar.
+///
+/// Zed'in `schemars::schema_for!` kullanimiyla ayni desen — kaynak
+/// kod guncellendikce schema'yi yeniden yazmak gereksiz runtime
+/// surprizi birakmaz.
+pub fn tema_schema() -> schemars::Schema {
+    schemars::schema_for!(TemaAilesiDosyasi)
+}
+
+fn tema_schema_yaz(hedef: &Path) {
+    match serde_json::to_string_pretty(&tema_schema()) {
+        Ok(icerik) => {
+            if let Some(dizin) = hedef.parent() {
+                let _ = std::fs::create_dir_all(dizin);
+            }
+            if let Err(e) = std::fs::write(hedef, icerik) {
+                hatayi_kaydet(&format!("tema.schema.json yazilamadi: {e}"));
+            }
+        }
+        Err(e) => hatayi_kaydet(&format!("tema.schema.json serilestirilemedi: {e}")),
+    }
+}
+
 // ── Calisma zamani tema yapisi ─────────────────────────────
 
 /// Zed `ThemeStyles` esdegeri: bir temanin tum semantik renk gruplari.
@@ -887,6 +919,10 @@ impl Global for TemaKaydi {}
 // ── Tema kurulumu ve yukleme ───────────────────────────────
 
 pub fn kurulum(cx: &mut App) {
+    // Schema'yi her baslangicta yenile — kod guncellendiginde editor
+    // tarafi da guncel kalsin. Cok kucuk bir JSON, maliyet ihmal edilebilir.
+    tema_schema_yaz(&tema_schema_dosya_yolu());
+
     let sistem = SistemGorunumu::tespit_et();
     let (kayit, aktif) = yukleme_bileseni(sistem.0);
     cx.set_global(sistem);
@@ -975,7 +1011,14 @@ fn aileyi_yukle_veya_yaz(yol: &Path) -> TemaAilesiDosyasi {
         match toml::to_string_pretty(&varsayilan) {
             Ok(icerik) => {
                 let baslik = "\
+#:schema ./tema.schema.json
 # KavisNet Tema Dosyasi
+#
+# Ustteki `#:schema` direktifi Taplo/evensen.vscode-toml gibi TOML
+# editorleri tarafindan okunur; yanlis alan adi, gecersiz enum degeri
+# vb. icin anlik uyari + otomatik tamamlama sunar. Schema dosyasi
+# uygulama her baslatildiginda yanindaki `tema.schema.json` olarak
+# yeniden yazilir.
 #
 # Bu dosya bir tema AILESIDIR: birden cok varyant (koyu/aydinlik) icerir.
 # Aktif varyanti `secim` bloguyla secersin:
@@ -1075,6 +1118,7 @@ pub fn temayi_izle(cx: &mut App) {
         }
 
         let mut son_icerik = std::fs::read_to_string(&yol).unwrap_or_default();
+        let mut son_sistem = cx.update(|cx| SistemGorunumu::global(cx).0);
 
         loop {
             let mut olay_var = false;
@@ -1111,6 +1155,25 @@ pub fn temayi_izle(cx: &mut App) {
                     }
                 }
             }
+
+            // Sistem gorunumu (aydinlik/koyu) degisikligi algilama.
+            // dark-light v1 subscribe API'si sunmadigi icin polling yapiyoruz;
+            // detect() cagrisi NSApp.effectiveAppearance / gsettings okumasi
+            // kadar ucuz, 250ms tick'te fark edilmeyecek maliyet.
+            // NOT: dark_light::detect() macOS'ta NSApp'e eristigi icin ana
+            // thread'de calismasi gerekir — cx.update icine aldik.
+            let guncel = cx.update(|_| SistemGorunumu::tespit_et().0);
+            if guncel != son_sistem {
+                son_sistem = guncel;
+                cx.update(|cx| {
+                    cx.set_global(SistemGorunumu(guncel));
+                    let (kayit, aktif) = yukleme_bileseni(guncel);
+                    cx.set_global(kayit);
+                    cx.set_global(aktif);
+                    println!("Sistem gorunumu degisti: {guncel:?} — tema yeniden secildi.");
+                });
+            }
+
             smol::Timer::after(Duration::from_millis(250)).await;
         }
     })
