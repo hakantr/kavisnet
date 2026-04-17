@@ -1,3 +1,9 @@
+// Release'de Windows GUI subsystem — aksi halde linker `console` subsystem'i
+// sececegi icin `KavisNet.exe` calistiginda arkada bos bir cmd penceresi
+// kaliyor. Debug'da `console` kalmali ki `println!` cikti goruntulenebilsin;
+// Zed de ayni pattern'i `crates/zed/src/main.rs:2` satirinda kullaniyor.
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 use gpui::*;
 use ortak_ikonlar::VarlikKaynagi;
 use ortak_tema::{kurulum as tema_kur, temayi_izle};
