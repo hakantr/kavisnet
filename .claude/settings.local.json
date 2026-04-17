@@ -16,7 +16,8 @@
       "Read(//Users/hakanbiris/github/zed/crates/gpui/**)",
       "Read(//Users/hakanbiris/github/**)",
       "Bash(git ls-remote *)",
-      "Bash(cargo fetch *)"
+      "Bash(cargo fetch *)",
+      "Bash(find *)"
     ]
   }
 }
