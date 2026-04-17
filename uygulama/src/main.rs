@@ -1,6 +1,6 @@
 use gpui::*;
 use ortak_ikonlar::VarlikKaynagi;
-use ortak_tema::{Tema, temayi_izle};
+use ortak_tema::{kurulum as tema_kur, temayi_izle};
 use uygulama_kabugu::ana_pencere_ac;
 
 // ── Actions ───────────────────────────────────────────────
@@ -10,13 +10,11 @@ actions!(app, [Quit]);
 // ── Cekirdek kurulum ve ana pencere ───────────────────────
 
 fn main() {
-    let tema = Tema::yukle();
-
     gpui_platform::application()
         .with_assets(VarlikKaynagi)
-        .run(move |cx: &mut App| {
-            // 1. Temayi kur
-            cx.set_global(tema);
+        .run(|cx: &mut App| {
+            // 1. Temayi kur: SistemGorunumu + TemaKaydi + aktif Tema global'leri
+            tema_kur(cx);
 
             // 2. Aksiyonlari ve menuleri ayarla
             cx.on_action(|_: &Quit, cx: &mut App| cx.quit());
