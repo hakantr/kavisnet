@@ -41,3 +41,23 @@ GPUI'de `.hover(|s| s.text_color(...))` child text element'lere kaskat etmiyor. 
 
 ### notify watcher'da olay ve dosya filtresi sart
 `notify::recommended_watcher` Access(Open) dahil tum olaylari gonderiyor. Filtresiz kullanilirsa okuma → olay → tekrar okuma kisir dongusu olusur. Event callback'inde `event.kind` (sadece Modify/Create/Remove) ve `event.paths` (sadece hedef dosya) kontrol et.
+
+
+
+• WindowButtonLayout API’sini doğrudan GPUI’ye ekleyemedim çünkü proje gpui 0.2.2 dış bağımlılığını kullanıyor ve bu sürümde o tip
+  yok. Bunun yerine aynı davranışı uygulama içinde eşdeğer bir katmanla ekledim (kutuphaneler/uygulama_kabugu/src/lib.rs:243).
+
+  Aktardığım özellikler:
+
+  - Linux’ta gsettings üzerinden button-layout okunup sol/sağ kontrol dizilimi uygulanıyor, okunamazsa Zed benzeri fallback
+    (minimize,maximize,close sağda).
+  - Yerleşim önbelleği 2 saniyede bir yenileniyor (sistemde layout değişirse yakalıyor).
+  - Kontroller sadece Decorations::Client modunda çiziliyor.
+  - window.window_controls() ile minimize/maximize destek durumuna göre buton filtreleniyor.
+  - Maximize durumunda ikon restore görünümüne geçiyor.
+  - Başlık çubuğunda sağ tıkta (destek varsa) native pencere menüsü açılıyor.
+  - Başlık düzeni sol kontroller + içerik + sağ kontroller olacak şekilde güncellendi.
+
+  Doğrulama: cargo check -p uygulama_kabugu başarılı.
+  İstersen bir sonraki adımda bunu tema ayarına da bağlayıp platform_default / standard / custom şeklinde kullanıcı seçeneği
+  ekleyebilirim.

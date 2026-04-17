@@ -2,6 +2,12 @@ use gpui::prelude::*;
 use gpui::*;
 use ortak_tema::Tema;
 use sol_menu::SolMenu;
+#[cfg(target_os = "linux")]
+use std::process::Command;
+#[cfg(target_os = "linux")]
+use std::sync::{Mutex, OnceLock};
+#[cfg(target_os = "linux")]
+use std::time::{Duration, Instant};
 
 // ── Ana Panel (Uygulamanın Kök Bileşeni) ──────────────────
 
@@ -70,10 +76,10 @@ impl Render for AnaPanel {
                     .top_0()
                     .left_0()
                     .right_0()
-                    .child(self.ust_bar.render(tema)),
+                    .child(self.ust_bar.render(window, tema)),
             )
         } else {
-            base.child(self.ust_bar.render(tema)).child(icerik_satiri)
+            base.child(self.ust_bar.render(window, tema)).child(icerik_satiri)
         };
 
         div()
@@ -246,11 +252,84 @@ enum KontrolTipi {
     Kapat,
 }
 
+#[derive(Clone, Copy)]
+enum KontrolTarafi {
+    Sol,
+    Sag,
+}
+
+#[cfg(target_os = "linux")]
+const KONTROL_BUTON_SINIRI: usize = 3;
+
+#[cfg(target_os = "linux")]
+#[derive(Clone, Copy)]
+struct KontrolDuzeni {
+    sol: [Option<KontrolTipi>; KONTROL_BUTON_SINIRI],
+    sag: [Option<KontrolTipi>; KONTROL_BUTON_SINIRI],
+}
+
+#[cfg(target_os = "linux")]
+impl KontrolDuzeni {
+    fn standart() -> Self {
+        Self {
+            sol: [None; KONTROL_BUTON_SINIRI],
+            sag: [
+                Some(KontrolTipi::Kucult),
+                Some(KontrolTipi::Buyut),
+                Some(KontrolTipi::Kapat),
+            ],
+        }
+    }
+
+    fn metinden_coz(metin: &str) -> Option<Self> {
+        let (sol_metin, sag_metin) = metin.split_once(':').unwrap_or(("", metin));
+
+        let mut goruldu = [false; KONTROL_BUTON_SINIRI];
+        let sol = Self::tarafi_coz(sol_metin, &mut goruldu);
+        let sag = Self::tarafi_coz(sag_metin, &mut goruldu);
+
+        if sol.iter().all(Option::is_none) && sag.iter().all(Option::is_none) {
+            return None;
+        }
+
+        Some(Self { sol, sag })
+    }
+
+    fn tarafi_coz(
+        metin: &str,
+        goruldu: &mut [bool; KONTROL_BUTON_SINIRI],
+    ) -> [Option<KontrolTipi>; KONTROL_BUTON_SINIRI] {
+        let mut sonuc = [None; KONTROL_BUTON_SINIRI];
+        let mut sira = 0;
+
+        for ad in metin.split(',') {
+            let ad = ad.trim();
+            let Some(tip) = KontrolTipi::gnome_adindan_coz(ad) else {
+                continue;
+            };
+
+            let indeks = tip.siralama_indeksi();
+            if goruldu[indeks] {
+                continue;
+            }
+
+            if let Some(yuva) = sonuc.get_mut(sira) {
+                *yuva = Some(tip);
+                goruldu[indeks] = true;
+                sira += 1;
+            }
+        }
+
+        sonuc
+    }
+}
+
 #[allow(dead_code)]
 impl KontrolTipi {
-    fn label(&self) -> &'static str {
+    fn simge(&self, pencere_buyuk_mu: bool) -> &'static str {
         match self {
             Self::Kucult => "\u{2013}",
+            Self::Buyut if pencere_buyuk_mu => "\u{2750}",
             Self::Buyut => "\u{25A1}",
             Self::Kapat => "\u{2715}",
         }
@@ -264,6 +343,25 @@ impl KontrolTipi {
         }
     }
 
+    #[cfg(target_os = "linux")]
+    fn gnome_adindan_coz(ad: &str) -> Option<Self> {
+        match ad {
+            "minimize" => Some(Self::Kucult),
+            "maximize" => Some(Self::Buyut),
+            "close" => Some(Self::Kapat),
+            _ => None,
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    fn siralama_indeksi(&self) -> usize {
+        match self {
+            Self::Kucult => 0,
+            Self::Buyut => 1,
+            Self::Kapat => 2,
+        }
+    }
+
     fn window_control(&self) -> WindowControlArea {
         match self {
             Self::Kucult => WindowControlArea::Min,
@@ -273,8 +371,75 @@ impl KontrolTipi {
     }
 }
 
+#[cfg(target_os = "linux")]
+struct KontrolDuzeniOnbellek {
+    son_yenileme: Instant,
+    duzen: KontrolDuzeni,
+}
+
+#[cfg(target_os = "linux")]
+fn linux_sistem_kontrol_duzeni_oku() -> Option<KontrolDuzeni> {
+    let cikti = Command::new("gsettings")
+        .args([
+            "get",
+            "org.gnome.desktop.wm.preferences",
+            "button-layout",
+        ])
+        .output()
+        .ok()?;
+
+    if !cikti.status.success() {
+        return None;
+    }
+
+    let ham = String::from_utf8_lossy(&cikti.stdout);
+    let metin = ham.trim().trim_matches('\'').trim_matches('"');
+
+    KontrolDuzeni::metinden_coz(metin)
+}
+
+#[cfg(target_os = "linux")]
+fn linux_kontrol_duzeni() -> KontrolDuzeni {
+    static ONBELLEK: OnceLock<Mutex<KontrolDuzeniOnbellek>> = OnceLock::new();
+
+    let onbellek = ONBELLEK.get_or_init(|| {
+        let ilk_duzen =
+            linux_sistem_kontrol_duzeni_oku().unwrap_or_else(KontrolDuzeni::standart);
+        Mutex::new(KontrolDuzeniOnbellek {
+            son_yenileme: Instant::now(),
+            duzen: ilk_duzen,
+        })
+    });
+
+    let mut kilit = match onbellek.lock() {
+        Ok(kilit) => kilit,
+        Err(kilit) => kilit.into_inner(),
+    };
+
+    if kilit.son_yenileme.elapsed() >= Duration::from_secs(2) {
+        kilit.son_yenileme = Instant::now();
+        if let Some(yeni_duzen) = linux_sistem_kontrol_duzeni_oku() {
+            kilit.duzen = yeni_duzen;
+        }
+    }
+
+    kilit.duzen
+}
+
+fn kontrol_destekleniyor_mu(tip: KontrolTipi, kontroller: WindowControls) -> bool {
+    match tip {
+        KontrolTipi::Kucult => kontroller.minimize,
+        KontrolTipi::Buyut => kontroller.maximize,
+        KontrolTipi::Kapat => true,
+    }
+}
+
 #[allow(dead_code)]
-fn kontrol_butonu(tip: KontrolTipi, tema: &Tema) -> Stateful<Div> {
+fn kontrol_butonu(
+    tip: KontrolTipi,
+    tema: &Tema,
+    pencere_buyuk_mu: bool,
+) -> Stateful<Div> {
     let hover_renk = match tip {
         KontrolTipi::Kapat => tema.kontrol_kapat_hover,
         _ => tema.kontrol_hover,
@@ -291,11 +456,12 @@ fn kontrol_butonu(tip: KontrolTipi, tema: &Tema) -> Stateful<Div> {
         .w(px(46.))
         .h_full()
         .text_size(px(13.))
+        .on_mouse_move(|_, _, cx| cx.stop_propagation())
         .child(
             div()
                 .text_color(metin_rengi)
                 .group_hover(grup_adi, move |s| s.text_color(hover_renk))
-                .child(tip.label()),
+                .child(tip.simge(pencere_buyuk_mu)),
         );
 
     #[cfg(target_os = "windows")]
@@ -320,26 +486,72 @@ fn kontrol_butonu(tip: KontrolTipi, tema: &Tema) -> Stateful<Div> {
     base
 }
 
-fn pencere_kontrolleri(tema: &Tema) -> Stateful<Div> {
+fn pencere_kontrolleri_taraf(
+    taraf: KontrolTarafi,
+    window: &Window,
+    tema: &Tema,
+) -> Stateful<Div> {
+    let id = match taraf {
+        KontrolTarafi::Sol => "window-controls-sol",
+        KontrolTarafi::Sag => "window-controls-sag",
+    };
+
+    let mut satir = div()
+        .id(id)
+        .flex()
+        .flex_row()
+        .items_center()
+        .flex_shrink_0()
+        .h_full();
+
     #[cfg(target_os = "macos")]
     {
-        let _ = tema;
-        return div().id("window-controls");
+        let _ = (window, tema);
+        return satir;
     }
 
-    #[cfg(not(target_os = "macos"))]
+    let desteklenen = window.window_controls();
+    let pencere_buyuk_mu = window.is_maximized();
+
+    #[cfg(target_os = "windows")]
     {
-        div()
-            .id("window-controls")
-            .flex()
-            .flex_row()
-            .items_center()
-            .flex_shrink_0()
-            .h_full()
-            .child(kontrol_butonu(KontrolTipi::Kucult, tema))
-            .child(kontrol_butonu(KontrolTipi::Buyut, tema))
-            .child(kontrol_butonu(KontrolTipi::Kapat, tema))
+        if matches!(taraf, KontrolTarafi::Sol) {
+            return satir;
+        }
+
+        for tip in [
+            KontrolTipi::Kucult,
+            KontrolTipi::Buyut,
+            KontrolTipi::Kapat,
+        ] {
+            if kontrol_destekleniyor_mu(tip, desteklenen) {
+                satir = satir.child(kontrol_butonu(tip, tema, pencere_buyuk_mu));
+            }
+        }
+
+        return satir;
     }
+
+    #[cfg(target_os = "linux")]
+    {
+        if !matches!(window.window_decorations(), Decorations::Client { .. }) {
+            return satir;
+        }
+
+        let duzen = linux_kontrol_duzeni();
+        let secilen = match taraf {
+            KontrolTarafi::Sol => duzen.sol,
+            KontrolTarafi::Sag => duzen.sag,
+        };
+
+        for tip in secilen.into_iter().flatten() {
+            if kontrol_destekleniyor_mu(tip, desteklenen) {
+                satir = satir.child(kontrol_butonu(tip, tema, pencere_buyuk_mu));
+            }
+        }
+    }
+
+    satir
 }
 
 // ── Kapatma kontrolu ──────────────────────────────────────
@@ -353,7 +565,12 @@ pub fn kapatma_istegi(_window: &mut Window, _cx: &mut gpui::App) -> bool {
 pub struct UstBar;
 
 impl UstBar {
-    pub fn render(&self, tema: &Tema) -> impl IntoElement {
+    pub fn render(&self, window: &Window, tema: &Tema) -> impl IntoElement {
+        let sol_kontroller =
+            pencere_kontrolleri_taraf(KontrolTarafi::Sol, window, tema);
+        let sag_kontroller =
+            pencere_kontrolleri_taraf(KontrolTarafi::Sag, window, tema);
+
         let mut kok = div()
             .id("ust-bar")
             .w_full()
@@ -381,6 +598,17 @@ impl UstBar {
                 window.start_window_move();
             }
         })
+        .on_mouse_down(MouseButton::Right, |ev, window, _cx| {
+            #[cfg(target_os = "linux")]
+            {
+                if matches!(window.window_decorations(), Decorations::Client { .. })
+                    && window.window_controls().window_menu
+                {
+                    window.show_window_menu(ev.position);
+                }
+            }
+        })
+        .child(sol_kontroller)
         .child(
             div()
                 .id("ust-bar-icerik")
@@ -396,7 +624,7 @@ impl UstBar {
                         .child("Merhaba Dünya!"),
                 ),
         )
-        .child(pencere_kontrolleri(tema))
+        .child(sag_kontroller)
     }
 }
 
