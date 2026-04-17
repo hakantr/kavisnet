@@ -617,12 +617,24 @@ fn sistem_blur_destegi() -> WindowBackgroundAppearance {
 
     #[cfg(target_os = "linux")]
     {
+        // GPUI v0.232.2 Wayland tarafında `org_kde_kwin_blur` protokolünü
+        // kullanarak compositor-side blur uyguluyor. Protokol whitelist'i:
+        //   KDE Plasma / KWin — protokol sahibi.
+        //   Hyprland         — `org_kde_kwin_blur_manager` global'ini sunar.
+        //   Wayfire (+plugin) — aynı protokolü sunar.
+        // GNOME Mutter, Sway, Weston bu protokolü sunmadığı için Transparent
+        // kalıyor (GPUI blur isteğini sessizce etkisiz bırakır, ama alpha
+        // `blur_seffaflik` değerine takılacağı için silik görünüm olur).
         let oturum = std::env::var("XDG_SESSION_TYPE").unwrap_or_default();
         let masaustu = std::env::var("XDG_CURRENT_DESKTOP")
             .unwrap_or_default()
             .to_uppercase();
 
-        if oturum == "wayland" && masaustu.contains("KDE") {
+        let blur_destekli = masaustu.contains("KDE")
+            || masaustu.contains("HYPRLAND")
+            || masaustu.contains("WAYFIRE");
+
+        if oturum == "wayland" && blur_destekli {
             WindowBackgroundAppearance::Blurred
         } else {
             WindowBackgroundAppearance::Transparent
