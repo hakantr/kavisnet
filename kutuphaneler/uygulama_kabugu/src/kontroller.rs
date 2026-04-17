@@ -110,13 +110,15 @@ fn kontrol_butonu(
     #[cfg(target_os = "windows")]
     let base = base.window_control_area(tip.window_control());
 
+    // Zed `platform_title_bar::platforms::platform_linux::WindowControl` ile
+    // birebir aynı davranış: mouse_down'a dokunulmaz (prevent_default
+    // tıklamayı öldürüyordu), click event'i cx.stop_propagation() + işlem.
+    // Container row'unun mouse_down'ı parent drag'ını engellemek için ayrıca
+    // `pencere_kontrolleri_taraf` içinde stop_propagation ediliyor.
     #[cfg(target_os = "linux")]
-    let base = base
-        .on_mouse_down(MouseButton::Left, move |_, window, cx| {
-            window.prevent_default();
-            cx.stop_propagation();
-        })
-        .on_click(move |_, window, cx| match tip {
+    let base = base.on_click(move |_, window, cx| {
+        cx.stop_propagation();
+        match tip {
             KontrolTipi::Kucult => window.minimize_window(),
             KontrolTipi::Buyut => window.zoom_window(),
             KontrolTipi::Kapat => {
@@ -124,7 +126,8 @@ fn kontrol_butonu(
                     cx.quit();
                 }
             }
-        });
+        }
+    });
 
     base
 }
@@ -188,10 +191,19 @@ pub fn pencere_kontrolleri_taraf(
             KontrolTarafi::Sag => duzen.sag,
         };
 
+        let mut buton_sayisi = 0;
         for tip in secilen.into_iter().flatten() {
             if kontrol_destekleniyor_mu(tip, desteklenen) {
                 satir = satir.child(kontrol_butonu(tip, tema, pencere_buyuk_mu));
+                buton_sayisi += 1;
             }
+        }
+
+        // Zed `LinuxWindowControls` ile aynı: butonlu container'da sol-tık
+        // event'ini üst bar'a geçirme (drag tetiklenmesin).
+        if buton_sayisi > 0 {
+            satir =
+                satir.on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation());
         }
     }
 
