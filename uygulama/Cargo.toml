@@ -2,6 +2,7 @@
 name = "KavisNet"
 version.workspace = true
 edition.workspace = true
+build = "build.rs"
 
 [dependencies]
 gpui.workspace = true
@@ -11,3 +12,16 @@ ortak_tema.workspace = true
 uygulama_kabugu.workspace = true
 sol_menu.workspace = true
 notify.workspace = true
+
+# Windows .exe'sine coklu boyut ikon gomer. `ico` PNG'leri tek .ico'ya
+# paketler; `winresource` bunu resource ID 1 olarak exe'ye baglar — GPUI
+# `gpui_windows::platform::load_icon()` fonksiyonu tam bu ID'yi
+# `LoadImageW` ile okuyor.
+[build-dependencies]
+ico = "0.4"
+winresource = "0.1"
+# `ico::IconImage::read_png` yalnizca RGB/RGBA PNG'yi destekliyor; bizim
+# ikonlarimiz indexed/palette. `image` hepsini RGBA'ya decode edip
+# `IconImage::from_rgba_data` icin hazir byte verir. Default feature'lar
+# cogu format icin dep cekiyor — sadece png'yi acik tutuyoruz.
+image = { version = "0.25", default-features = false, features = ["png"] }
