@@ -23,16 +23,16 @@ pub enum KontrolTarafi {
 
 #[allow(dead_code)]
 impl KontrolTipi {
-    pub fn simge(&self, pencere_buyuk_mu: bool) -> &'static str {
+    /// Kontrol butonunun SVG yol adını döndürür. Yol `ortak_ikonlar`
+    /// `AssetSource` kaydında aranır; GPUI SVG'yi monokrom alpha mask olarak
+    /// render eder, bu yüzden `text_color` ile verilen renk tüm çizime
+    /// uygulanır (Zed `IconName::Generic*` ile aynı yaklaşım).
+    pub fn ikon_yolu(&self, pencere_buyuk_mu: bool) -> &'static str {
         match self {
-            Self::Kucult => "\u{2013}",
-            // \u{29C9} (TWO JOINED SQUARES) matematik sembol bloğunda; Noto/DejaVu
-            // başta çoğu Linux fontunda mevcut. Önceden kullanılan \u{2750}
-            // (UPPER-RIGHT DROP-SHADOWED WHITE SQUARE) bazı Linux fontlarında
-            // eksik glyph olarak çıkıyordu.
-            Self::Buyut if pencere_buyuk_mu => "\u{29C9}",
-            Self::Buyut => "\u{25A1}",
-            Self::Kapat => "\u{2715}",
+            Self::Kucult => "ikonlar/kontrol_kucult.svg",
+            Self::Buyut if pencere_buyuk_mu => "ikonlar/kontrol_restore.svg",
+            Self::Buyut => "ikonlar/kontrol_buyut.svg",
+            Self::Kapat => "ikonlar/kontrol_kapat.svg",
         }
     }
 
@@ -103,6 +103,17 @@ fn kontrol_butonu(
     let metin_rengi = tema.ust_bar_metin;
     let grup_adi = SharedString::from(tip.grup_adi());
 
+    // Zed `IconName::Generic*` ile aynı: 16x16 viewBox'lı SVG, size_4() ile
+    // 16px kareye çizilir. text_color SVG'yi alpha mask olarak tutup renk
+    // verir — aynı dosya hem normal hem hover'da kullanılır.
+    let ikon_yolu = SharedString::from(tip.ikon_yolu(pencere_buyuk_mu));
+    let ikon = svg()
+        .size_4()
+        .flex_none()
+        .path(ikon_yolu)
+        .text_color(metin_rengi)
+        .group_hover(grup_adi.clone(), move |s| s.text_color(ikon_hover));
+
     // Windows/eski yerleşim: geniş dikdörtgen buton (46px) — native stil.
     // Linux: Zed'in `platform_linux::WindowControl` pattern'i — 20x20 daire.
     #[cfg(not(target_os = "linux"))]
@@ -114,14 +125,8 @@ fn kontrol_butonu(
         .justify_center()
         .w(px(46.))
         .h_full()
-        .text_size(px(13.))
         .on_mouse_move(|_, _, cx| cx.stop_propagation())
-        .child(
-            div()
-                .text_color(metin_rengi)
-                .group_hover(grup_adi, move |s| s.text_color(ikon_hover))
-                .child(tip.simge(pencere_buyuk_mu)),
-        );
+        .child(ikon);
 
     // Zed `WindowControl::render` ile birebir: `.group("")` + container
     // `.hover(|s| s.bg(bg_hover))` + child `.group_hover("", …)` ikon rengi.
@@ -138,15 +143,9 @@ fn kontrol_butonu(
         .h_5()
         .rounded_full()
         .cursor_pointer()
-        .text_size(px(12.))
         .hover(move |s| s.bg(zemin_hover))
         .on_mouse_move(|_, _, cx| cx.stop_propagation())
-        .child(
-            div()
-                .text_color(metin_rengi)
-                .group_hover(grup_adi, move |s| s.text_color(ikon_hover))
-                .child(tip.simge(pencere_buyuk_mu)),
-        );
+        .child(ikon);
 
     #[cfg(target_os = "windows")]
     let base = base.window_control_area(tip.window_control());

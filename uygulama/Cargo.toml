@@ -6,6 +6,7 @@ edition.workspace = true
 [dependencies]
 gpui.workspace = true
 gpui_platform.workspace = true
+ortak_ikonlar.workspace = true
 ortak_tema.workspace = true
 uygulama_kabugu.workspace = true
 sol_menu.workspace = true
